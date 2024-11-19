@@ -1,0 +1,27 @@
+name: release-main
+
+on:
+  release:
+    types: [published]
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      # IMPORTANT: required for trusted publishing to PyPI
+      id-token: write
+    needs: [set-version]
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+
+      - name: Build package
+        run: uvx --from build pyproject-build --installer uv
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

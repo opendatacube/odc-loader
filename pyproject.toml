@@ -12,7 +12,6 @@ dependencies = [
     "pandas",
     "toolz",
     "xarray>=0.19",
-    "coverage>=7.6.7",
 ]
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
@@ -34,9 +33,6 @@ Homepage = "https://github.com/opendatacube/odc-loader/"
 
 [project.optional-dependencies]
 botocore = ["botocore"]
-
-# [project.scripts]
-# odc-loader = "odc_loader:main"
 
 [build-system]
 requires = ["setuptools>=69", "setuptools-scm"]

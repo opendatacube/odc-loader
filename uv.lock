@@ -394,7 +394,6 @@ version = "0.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "affine" },
-    { name = "coverage" },
     { name = "dask", extra = ["array"] },
     { name = "numpy" },
     { name = "odc-geo" },
@@ -421,7 +420,6 @@ dev = [
 requires-dist = [
     { name = "affine" },
     { name = "botocore", marker = "extra == 'botocore'" },
-    { name = "coverage", specifier = ">=7.6.7" },
     { name = "dask", extras = ["array"] },
     { name = "numpy", specifier = ">=1.20.0" },
     { name = "odc-geo", specifier = ">=0.4.7" },
