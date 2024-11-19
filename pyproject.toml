@@ -41,6 +41,11 @@ botocore = ["botocore"]
 requires = ["setuptools>=69", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+# Because we're using the 'odc' namespace package, we need to list it explicitly
+# See https://packaging.python.org/en/latest/guides/packaging-namespace-packages/
+include = ["odc.loader"]
+
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
