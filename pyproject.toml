@@ -12,6 +12,7 @@ dependencies = [
     "pandas",
     "toolz",
     "xarray>=0.19",
+    "coverage>=7.6.7",
 ]
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
@@ -50,12 +51,9 @@ include = ["odc.loader"]
 python_version = "3.10"
 ignore_missing_imports = true
 allow_redefinition = true
+explicit_package_bases = true # work with the 'odc' namespace package
+files = ["odc"]
 
-[tool.coverage.run]
-omit = [
-  "tests/*",
-  "*/test_*"
-]
 
 [tool.isort]
 profile = "black"
@@ -76,6 +74,7 @@ disable = [
 
 [dependency-groups]
 dev = [
+    "coverage>=7.6.7",
     "geopandas>=1.0.1",
     "mypy>=1.13.0",
     "pytest>=8.3.3",
