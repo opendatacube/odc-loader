@@ -12,7 +12,6 @@ jobs:
     permissions:
       # IMPORTANT: required for trusted publishing to PyPI
       id-token: write
-    needs: [set-version]
     steps:
       - name: Check out
         uses: actions/checkout@v4
