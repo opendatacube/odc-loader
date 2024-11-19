@@ -33,6 +33,9 @@ Homepage = "https://github.com/opendatacube/odc-loader/"
 
 [project.optional-dependencies]
 botocore = ["botocore"]
+zarr = [
+    "zarr>=2.18.3",
+]
 
 [build-system]
 requires = ["setuptools>=69", "setuptools-scm"]
