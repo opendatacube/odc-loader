@@ -77,5 +77,6 @@ disable = [
 [dependency-groups]
 dev = [
     "geopandas>=1.0.1",
+    "mypy>=1.13.0",
     "pytest>=8.3.3",
 ]
