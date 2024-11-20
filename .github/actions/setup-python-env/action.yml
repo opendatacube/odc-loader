@@ -23,8 +23,9 @@ runs:
       with:
         version: ${{ inputs.uv-version }}
         enable-cache: 'true'
-        cache-suffix: ${{ matrix.python-version }}
+        cache-suffix: ${{ inputs.python-version }}
 
     - name: Install Python dependencies
+      # --frozen: Sync without updating the uv.lock file
       run: uv sync --frozen --all-extras --python ${{ inputs.python-version }}
       shell: bash

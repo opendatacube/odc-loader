@@ -1,4 +1,5 @@
 [project]
+version = "0.1.0.dev"
 name = "odc-loader"
 description = "Tooling for constructing xarray objects from parsed metadata"
 readme = "README.md"
@@ -24,7 +25,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: GIS",
     "Typing :: Typed",
 ]
-dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/opendatacube/odc-loader/"
@@ -38,16 +38,11 @@ zarr = [
 ]
 
 [build-system]
-requires = ["setuptools>=69", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
-[tool.setuptools.packages.find]
-# Because we're using the 'odc' namespace package, we need to list it explicitly
-# See https://packaging.python.org/en/latest/guides/packaging-namespace-packages/
-include = ["odc.loader"]
-
-[tool.setuptools_scm]
-version_file = "odc/loader/_version.py"
+[tool.flit.module]
+name = "odc.loader"
 
 [tool.mypy]
 python_version = "3.10"
