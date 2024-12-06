@@ -1,5 +1,5 @@
 [project]
-version = "0.2.0.dev0"
+version = "0.3.0"
 name = "odc-loader"
 description = "Tooling for constructing xarray objects from parsed metadata"
 readme = "README.md"
