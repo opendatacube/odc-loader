@@ -1,5 +1,5 @@
 [project]
-version = "0.2.0"
+version = "0.2.0.dev0"
 name = "odc-loader"
 description = "Tooling for constructing xarray objects from parsed metadata"
 readme = "README.md"
@@ -45,11 +45,10 @@ build-backend = "flit_core.buildapi"
 name = "odc.loader"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.9"
 ignore_missing_imports = true
 allow_redefinition = true
-explicit_package_bases = true # work with the 'odc' namespace package
-files = ["odc"]
+show_error_codes = true
 
 
 [tool.isort]
