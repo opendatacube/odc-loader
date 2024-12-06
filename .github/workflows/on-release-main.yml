@@ -29,7 +29,7 @@ jobs:
           # Run the pyproject-build cli tool from the Python build
           # package, and use the uv installer because it's blazing fast
           uvx --from build pyproject-build --installer uv
-          uvx twine check --strict
+          uvx twine check --strict dist/*
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
