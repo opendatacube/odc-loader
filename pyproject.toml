@@ -1,9 +1,10 @@
 [project]
-version = "0.3.0"
+version = "0.4.0"
 name = "odc-loader"
 description = "Tooling for constructing xarray objects from parsed metadata"
 readme = "README.md"
 requires-python = ">= 3.10"
+license = {file = "LICENSE"}
 dependencies = [
     "affine",
     "odc-geo>=0.4.7",
