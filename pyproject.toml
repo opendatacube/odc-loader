@@ -4,7 +4,7 @@ name = "odc-loader"
 description = "Tooling for constructing xarray objects from parsed metadata"
 readme = "README.md"
 requires-python = ">= 3.10"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 dependencies = [
     "odc-geo>=0.4.7",
     "rasterio>=1.0.0,!=1.3.0,!=1.3.1",
@@ -26,14 +26,13 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/opendatacube/odc-loader/"
-# Documentation = "https://odc-loader.readthedocs.io/en/latest/"
+"ODC Docs" = "https://opendatacube.readthedocs.io/en/latest/"
 "Bug Reporting" = "https://github.com/opendatacube/odc-loader/issues"
+# Documentation = "https://odc-loader.readthedocs.io/en/latest/"
 
 [project.optional-dependencies]
 botocore = ["botocore"]
-zarr = [
-    "zarr>=2.18.3",
-]
+zarr = ["zarr>=2.18.3,<3"]
 
 [build-system]
 requires = ["flit_core >=3.2,<4"]
@@ -43,7 +42,7 @@ build-backend = "flit_core.buildapi"
 name = "odc.loader"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 ignore_missing_imports = true
 allow_redefinition = true
 show_error_codes = true
@@ -58,12 +57,12 @@ max-line-length = 120
 max-args = 10
 
 disable = [
-  "missing-function-docstring",
-  "invalid-name",
-  "fixme",
-  "wrong-import-order",
-  "duplicate-code",
-  "ungrouped-imports",
+    "missing-function-docstring",
+    "invalid-name",
+    "fixme",
+    "wrong-import-order",
+    "duplicate-code",
+    "ungrouped-imports",
 ]
 
 [dependency-groups]

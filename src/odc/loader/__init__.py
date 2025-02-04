@@ -44,3 +44,12 @@ __all__ = (
     "resolve_dst_dtype",
     "resolve_chunk_shape",
 )
+
+
+def __getattr__(name: str) -> str:
+    from importlib.metadata import version
+
+    if name == "__version__":
+        return version("odc_loader")
+    else:
+        raise AttributeError(f"module {__name__} has no attribute {name}")
