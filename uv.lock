@@ -512,7 +512,7 @@ requires-dist = [
     { name = "odc-geo", specifier = ">=0.4.7" },
     { name = "rasterio", specifier = ">=1.0.0,!=1.3.0,!=1.3.1" },
     { name = "xarray", specifier = ">=0.19" },
-    { name = "zarr", marker = "extra == 'zarr'", specifier = ">=2.18.3" },
+    { name = "zarr", marker = "extra == 'zarr'", specifier = ">=2.18.3,<3" },
 ]
 
 [package.metadata.requires-dev]
