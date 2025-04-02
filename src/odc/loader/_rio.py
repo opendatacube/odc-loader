@@ -409,7 +409,7 @@ def _do_read(
     if dst is not None:
         # Assumes Y,X or B,Y,X order
         assert dst.ndim == ndim
-        _dst = dst[(...,) + roi_dst]  # type: ignore
+        _dst = dst[(...,) + roi_dst]
     else:
         shape = prefix + roi_shape(rr.roi_dst)
         _dst = np.ndarray(shape, dtype=resolve_dst_dtype(src.dtype, cfg))
