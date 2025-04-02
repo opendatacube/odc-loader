@@ -477,7 +477,7 @@ def fuse_nd_slices(
         np.copyto(dst, fill_value)
 
     for yx_roi, pix in srcs:
-        _roi: tuple[slice, ...] = prefix_roi + yx_roi + postfix_roi  # type: ignore
+        _roi: tuple[slice, ...] = prefix_roi + yx_roi + postfix_roi
         assert dst[_roi].shape == pix.shape
 
         missing = nodata_mask(dst[_roi], fill_value)
@@ -738,7 +738,7 @@ def load_tasks(
         ydim = cfg.ydim + 1
 
         for idx in np.ndindex(shape_in_chunks[:3]):
-            tBi, yi, xi = idx  # type: ignore
+            tBi, yi, xi = idx
             srcs: List[List[int]] = []
             t0, nt = _offsets[0][tBi], _chunks[0][tBi]
             for ti in range(t0, t0 + nt):
