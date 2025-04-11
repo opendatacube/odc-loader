@@ -4,6 +4,7 @@ Generic tools with only standard lib dependencies.
 
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Iterable, Iterator, Sized, TypeVar, Union
+from typing_extensions import override
 
 T = TypeVar("T")
 S = TypeVar("S")
@@ -20,9 +21,11 @@ class SizedIterable(Sized, Iterable[T]):
         self._xx = iter(xx)
         self._n = n
 
+    @override
     def __len__(self) -> int:
         return self._n
 
+    @override
     def __iter__(self) -> Iterator[T]:
         yield from self._xx
 
