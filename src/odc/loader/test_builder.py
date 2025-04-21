@@ -95,7 +95,7 @@ def check_xx(
     extra_coords: Sequence[FixedCoord] | None,
     extra_dims: Mapping[str, int] | None,
     expect: Mapping[str, _sn],
-):
+) -> None:
     assert isinstance(xx, xr.Dataset)
     for name, dv in xx.data_vars.items():
         assert isinstance(dv.data, (np.ndarray, da.Array))
@@ -128,7 +128,7 @@ def test_mk_dataset(
     extra_coords: Sequence[FixedCoord] | None,
     extra_dims: Mapping[str, int] | None,
     expect: Mapping[str, _sn],
-):
+) -> None:
     assert gbox.crs == "EPSG:4326"
     template = RasterGroupMetadata(
         {
@@ -157,7 +157,7 @@ def test_dask_builder(
     expect: Mapping[str, _sn],
     chunk_extra_dims: bool,
     mode,
-):
+) -> None:
     _bands = {
         k: RasterBandMetadata(b.dtype, b.fill_value, dims=b.dims)
         for k, b in bands.items()
@@ -226,7 +226,7 @@ def test_dask_builder(
         ({"a": _rlp()}, "float32", "float32"),
     ],
 )
-def test_largest_dtype(cfg, fallback, expect):
+def test_largest_dtype(cfg, fallback, expect) -> None:
     assert _largest_dtype(cfg, fallback) == expect
 
 
@@ -252,7 +252,7 @@ def test_resolve_chunks(
     extra_dims: Mapping[str, int] | None,
     expect: tuple[int, ...],
     dtype: Any | None,
-):
+) -> None:
     normed_chunks = resolve_chunks(base_shape, chunks, dtype, extra_dims)
     assert isinstance(normed_chunks, tuple)
     assert len(normed_chunks) == len(base_shape) + len(extra_dims or {})
@@ -264,7 +264,7 @@ def test_resolve_chunks(
         assert normed_chunks == expect
 
 
-def test_resolve_chunk_shape():
+def test_resolve_chunk_shape() -> None:
     # pylint: disable=redefined-outer-name
     nt = 7
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(33, 77), tight=True)
@@ -312,7 +312,7 @@ def test_load_tasks(
     extra_dims: Mapping[str, int],
     nt: int,
     nsrcs: int,
-):
+) -> None:
     var_name = "xx"
     cfg = {var_name: RasterLoadParams("uint8", dims=dims)}
 

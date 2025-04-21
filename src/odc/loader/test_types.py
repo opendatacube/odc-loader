@@ -41,7 +41,7 @@ gbox_3857 = gbox_4326.to_crs(3857)
         ),
     ],
 )
-def test_repr_json_smoke(xx):
+def test_repr_json_smoke(xx) -> None:
     dd = xx._repr_json_()
     assert isinstance(dd, dict)
     assert json.dumps(dd)
@@ -63,7 +63,7 @@ def test_repr_json_smoke(xx):
         assert dd["nodata"] == meta.nodata
 
 
-def test_with_default():
+def test_with_default() -> None:
     A = object()
     B = "B"
     assert with_default(None, A) is A
@@ -72,7 +72,7 @@ def test_with_default():
     assert with_default((), B, (), {}) is B
 
 
-def test_raster_band():
+def test_raster_band() -> None:
     assert RasterBandMetadata("float32", -9999).nodata == -9999
     assert RasterBandMetadata().units == "1"
     assert RasterBandMetadata().unit == "1"
@@ -99,7 +99,7 @@ def test_raster_band():
     )
 
 
-def test_basics():
+def test_basics() -> None:
     assert RasterLoadParams().fill_value is None
     assert RasterLoadParams().dtype is None
     assert RasterLoadParams().resampling == "nearest"
@@ -112,8 +112,10 @@ def test_basics():
     assert RasterGroupMetadata({}).patch(extra_dims={"b": 3}).extra_dims == {"b": 3}
 
 
-def test_norm_nodata():
+def test_norm_nodata() -> None:
     assert norm_nodata(None) is None
     assert norm_nodata(0) == 0
     assert isinstance(norm_nodata(0), (float, int))
-    assert math.isnan(norm_nodata("nan"))
+    nan = norm_nodata("nan")
+    assert nan is not None
+    assert math.isnan(nan)

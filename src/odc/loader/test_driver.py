@@ -7,11 +7,11 @@ from .testing.fixtures import FakeReaderDriver
 from .types import RasterGroupMetadata
 
 
-def test_driver_load():
+def test_driver_load() -> None:
     drv = RioDriver()
     drv_fake = FakeReaderDriver(RasterGroupMetadata({}))
 
-    register_driver("fake", lambda: FakeReaderDriver({}))
+    register_driver("fake", lambda: FakeReaderDriver(RasterGroupMetadata({})))
     register_driver("fake2", drv_fake)
 
     assert isinstance(reader_driver(), RioDriver)

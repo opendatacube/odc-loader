@@ -158,7 +158,7 @@ def test_mem_reader(sample_ds: xr.Dataset) -> None:
         assert pix.shape == (2, *gbox.shape.yx)
 
 
-def test_raster_group_md():
+def test_raster_group_md() -> None:
     rgm = raster_group_md(xr.Dataset())
     assert rgm.bands == {}
     assert rgm.aliases == {}
@@ -181,7 +181,7 @@ def test_raster_group_md():
     assert rgm.extra_coords[0] == coord
 
 
-def test_memreader_zarr(sample_ds: xr.Dataset):
+def test_memreader_zarr(sample_ds: xr.Dataset) -> None:
     assert isinstance(sample_ds.odc, ODCExtensionDs)
     assert "xx" in sample_ds
 
@@ -236,7 +236,7 @@ def test_memreader_zarr(sample_ds: xr.Dataset):
     assert xx.shape == gbox.shape.yx
 
 
-def test_extract_zarr_spec():
+def test_extract_zarr_spec() -> None:
     assert extract_zarr_spec({}) is None
     assert extract_zarr_spec({"something": "else"}) is None
 

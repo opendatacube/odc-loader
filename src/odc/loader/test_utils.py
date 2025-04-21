@@ -2,7 +2,7 @@
 from ._utils import SizedIterable
 
 
-def test_sized_iterator():
+def test_sized_iterator() -> None:
     assert len(SizedIterable([], 0)) == 0
     assert len(SizedIterable(iter([1, 2, 3]), 3)) == 3
 
