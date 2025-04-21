@@ -34,7 +34,7 @@ from .types import (
 )
 
 
-def test_same_nodata():
+def test_same_nodata() -> None:
     _nan = float("nan")
     assert same_nodata(None, None) is True
     assert same_nodata(_nan, _nan) is True
@@ -47,7 +47,7 @@ def test_same_nodata():
     assert same_nodata(109, 1) is False
 
 
-def test_resolve_nodata():
+def test_resolve_nodata() -> None:
     def _cfg(**kw):
         return RasterLoadParams("uint8", **kw)
 
@@ -59,18 +59,20 @@ def test_resolve_nodata():
     assert resolve_src_nodata(11, _cfg(src_nodata_override=-1)) == -1
     assert resolve_src_nodata(11, _cfg(src_nodata_override=0)) == 0
 
-    assert isnan(resolve_dst_nodata(np.dtype("float32"), _cfg(), 0))
+    nan = resolve_dst_nodata(np.dtype("float32"), _cfg(), 0)
+    assert nan is not None
+    assert isnan(nan)
     assert resolve_dst_nodata(np.dtype("uint16"), _cfg(), 0) == 0
     assert resolve_dst_nodata(np.dtype("uint16"), _cfg(fill_value=3), 5) == 3
     assert resolve_dst_nodata(np.dtype("float32"), _cfg(fill_value=3), 7) == 3
 
 
-def test_resolve_dst_dtype():
+def test_resolve_dst_dtype() -> None:
     assert resolve_dst_dtype("uint8", RasterLoadParams()) == "uint8"
     assert resolve_dst_dtype("uint8", RasterLoadParams(dtype="float32")) == "float32"
 
 
-def test_pick_overiew():
+def test_pick_overiew() -> None:
     assert pick_overview(2, []) is None
     assert pick_overview(1, [2, 4]) is None
     assert pick_overview(2, [2, 4, 8]) == 0
@@ -102,7 +104,7 @@ def test_resolve_band_query(
     band: int,
     selection: Any,
     expect: Any,
-):
+) -> None:
     src = RasterSource("", band=band, meta=RasterBandMetadata(dims=dims))
     assert resolve_band_query(src, n, selection) == expect
 
@@ -119,11 +121,11 @@ def test_resolve_band_query(
         (2, np.s_[1:2, 3:4], np.s_[1:2, 3:4, :, :]),
     ],
 )
-def test_expand_selection(ydim, selection, expect):
+def test_expand_selection(ydim, selection, expect) -> None:
     assert expand_selection(selection, ydim) == expect
 
 
-def test_rio_reader_env():
+def test_rio_reader_env() -> None:
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(160, 320), tight=True)
     rdr = RioDriver()
     load_state = rdr.new_load(gbox)
@@ -153,7 +155,7 @@ def test_rio_reader_env():
     rdr.finalise_load(load_state)
 
 
-def test_rio_read():
+def test_rio_read() -> None:
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(160, 320), tight=True)
 
     non_zeros_roi = np.s_[30:47, 190:210]
@@ -261,7 +263,7 @@ def test_rio_read():
         assert gbox[roi] != gbox
 
 
-def test_reader_ovr():
+def test_reader_ovr() -> None:
     # smoke test only
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(512, 512), tight=True)
 
@@ -284,7 +286,7 @@ def test_reader_ovr():
 
 @pytest.mark.parametrize("resamlpling", ["nearest", "bilinear", "cubic"])
 @pytest.mark.parametrize("dims", [("y", "x", "band"), ("band", "y", "x")])
-def test_rio_read_rgb(resamlpling, dims):
+def test_rio_read_rgb(resamlpling, dims) -> None:
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(512, 512), tight=True)
 
     non_zeros_roi = np.s_[30:47, 190:210]
@@ -340,7 +342,7 @@ def test_rio_read_rgb(resamlpling, dims):
             assert pix.shape == expect_shape_2
 
 
-def test_reader_unhappy_paths():
+def test_reader_unhappy_paths() -> None:
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(160, 320), tight=True)
     xx = xr_zeros(gbox, dtype="int16")
 
@@ -353,7 +355,7 @@ def test_reader_unhappy_paths():
             _, _ = rio_read(src, cfg, gbox)
 
 
-def test_reader_fail_on_error():
+def test_reader_fail_on_error() -> None:
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(160, 320), tight=True)
     xx = xr_zeros(gbox, dtype="int16")
     src = RasterSource("file:///no-such-path/no-such.tif")
@@ -377,7 +379,7 @@ def test_reader_fail_on_error():
 
 
 @pytest.mark.parametrize("dtype", ["int16", "float32"])
-def test_dask_reader_adaptor(dtype: str):
+def test_dask_reader_adaptor(dtype: str) -> None:
     gbox = GeoBox.from_bbox((-180, -90, 180, 90), shape=(160, 320), tight=True)
 
     meta = RasterBandMetadata(dtype, 333)

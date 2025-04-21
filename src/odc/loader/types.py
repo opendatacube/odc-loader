@@ -143,7 +143,7 @@ class FixedCoord:
     dim: str = ""
     units: str = "1"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.dtype:
             self.dtype = np.array(self.values).dtype.str
         if not self.dim:

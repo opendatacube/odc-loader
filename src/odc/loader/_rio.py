@@ -168,7 +168,7 @@ class _GlobalRioConfig:
         *,
         aws: Optional[Dict[str, Any]],
         gdal_opts: Dict[str, Any],
-    ):
+    ) -> None:
         self._aws = {**aws} if aws is not None else None
         self._gdal_opts = {**gdal_opts}
         self._configured = True
@@ -204,7 +204,7 @@ class ThreadSession(threading.local):
     def configured(self) -> bool:
         return self._session is not None
 
-    def reset(self):
+    def reset(self) -> None:
         self._session = None
         self._aws = None
         if rasterio.env.hasenv():
@@ -282,7 +282,7 @@ def _set_default_rio_config(
     aws: Optional[Dict[str, Any]] = None,
     cloud_defaults: bool = False,
     **kwargs,
-):
+) -> None:
     opts = {**GDAL_CLOUD_DEFAULTS, **kwargs} if cloud_defaults else {**kwargs}
     _CFG.set(aws=aws, gdal_opts=opts)
 
@@ -293,7 +293,7 @@ def configure_rio(
     verbose: bool = False,
     aws: Optional[Dict[str, Any]] = None,
     **params,
-):
+) -> None:
     """
     Change GDAL/rasterio configuration.
 
@@ -317,7 +317,7 @@ def configure_rio(
             _dump_rio_config()
 
 
-def _dump_rio_config():
+def _dump_rio_config() -> None:
     cfg = get_rio_env()
     if not cfg:
         return

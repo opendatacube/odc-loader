@@ -48,7 +48,7 @@ def mock_urlopen(text, code=200):
     return m
 
 
-def test_ec2_current_region():
+def test_ec2_current_region() -> None:
     tests = [
         (None, None),
         (_json(region="TT"), "TT"),
@@ -62,7 +62,7 @@ def test_ec2_current_region():
 
 
 @patch_aws("botocore_default_region", return_value=None)
-def test_auto_find_region(*mocks):
+def test_auto_find_region(*mocks) -> None:
     with patch_aws("_fetch_text", return_value=None):
         with pytest.raises(ValueError):
             auto_find_region()
@@ -72,11 +72,11 @@ def test_auto_find_region(*mocks):
 
 
 @patch_aws("botocore_default_region", return_value="tt-from-botocore")
-def test_auto_find_region_2(*mocks):
+def test_auto_find_region_2(*mocks) -> None:
     assert auto_find_region() == "tt-from-botocore"
 
 
-def test_fetch_text():
+def test_fetch_text() -> None:
     with patch_aws("urlopen", return_value=mock_urlopen("", 505)):
         assert _fetch_text("http://localhost:8817") is None
 
@@ -90,7 +90,7 @@ def test_fetch_text():
         assert _fetch_text("http://localhost:8817") is None
 
 
-def test_get_aws_settings(monkeypatch, without_aws_env):
+def test_get_aws_settings(monkeypatch, without_aws_env) -> None:
     pp = write_files(
         {
             "config": """
@@ -158,13 +158,13 @@ aws_secret_access_key = fake-fake-fake
 
 
 @patch_aws("get_creds_with_retry", return_value=None)
-def test_get_aws_settings_no_credentials(without_aws_env):
+def test_get_aws_settings_no_credentials(without_aws_env) -> None:
     # get_aws_settings should fail when credentials are not available
     with pytest.raises(ValueError, match="Couldn't get credentials"):
         aws, creds = get_aws_settings(region_name="fake")
 
 
-def test_creds_with_retry():
+def test_creds_with_retry() -> None:
     session = mock.MagicMock()
     session.get_credentials = mock.MagicMock(return_value=None)
 

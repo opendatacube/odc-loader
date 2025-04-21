@@ -60,7 +60,7 @@ def write_files(file_dict):
     containing_dir = tempfile.mkdtemp(suffix="testrun")
     _write_files_to_dir(containing_dir, file_dict)
 
-    def remove_if_exists(path):
+    def remove_if_exists(path) -> None:
         if os.path.exists(path):
             shutil.rmtree(path)
 
@@ -97,7 +97,7 @@ class FakeMDPlugin:
         group_md: RasterGroupMetadata,
         driver_data,
         add_subdataset: bool = False,
-    ):
+    ) -> None:
         self._group_md = group_md
         self._driver_data = driver_data
         self._add_subdataset = add_subdataset
@@ -150,7 +150,7 @@ class FakeReader:
         def with_env(self, env: dict[str, Any]) -> "FakeReader.LoadState":
             return FakeReader.LoadState(self.geobox, self.meta, env, self.is_dask)
 
-    def __init__(self, src: RasterSource, load_state: "FakeReader.LoadState"):
+    def __init__(self, src: RasterSource, load_state: "FakeReader.LoadState") -> None:
         self._src = src
         self._load_state = load_state
 
@@ -217,7 +217,7 @@ class FakeReaderDriver:
         group_md: RasterGroupMetadata,
         *,
         parser: MDParser | None = None,
-    ):
+    ) -> None:
         self._group_md = group_md
         self._parser = parser or FakeMDPlugin(group_md, None)
 
