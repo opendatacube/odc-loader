@@ -11,6 +11,7 @@ dependencies = [
     "dask[array]",
     "numpy>=1.20.0",
     "xarray>=0.19",
+    "typing-extensions>=4.2.0",
 ]
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
