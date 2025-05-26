@@ -8,13 +8,15 @@ Utilities for reading pixels from raster files.
 from __future__ import annotations
 
 import math
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 from dask import delayed
 from odc.geo.geobox import GeoBox
 
 from .types import (
+    AuxBandMetadata,
+    AuxLoadParams,
     Band_DType,
     RasterBandMetadata,
     RasterLoadParams,
@@ -113,13 +115,13 @@ class ReaderDaskAdaptor:
 
 
 def resolve_load_cfg(
-    bands: dict[str, RasterBandMetadata],
+    bands: Mapping[str, RasterBandMetadata | AuxBandMetadata],
     resampling: str | dict[str, str] | None = None,
     dtype: Band_DType | None = None,
     use_overviews: bool = True,
     nodata: float | None = None,
     fail_on_error: bool = True,
-) -> dict[str, RasterLoadParams]:
+) -> dict[str, RasterLoadParams | AuxLoadParams]:
     """
     Combine band metadata with user provided settings to produce load configuration.
     """
@@ -148,7 +150,15 @@ def resolve_load_cfg(
             return nodata
         return band.nodata
 
-    def _resolve(name: str, band: RasterBandMetadata) -> RasterLoadParams:
+    def _resolve(
+        name: str, band: RasterBandMetadata | AuxBandMetadata
+    ) -> RasterLoadParams | AuxLoadParams:
+        if isinstance(band, AuxBandMetadata):
+            return AuxLoadParams(
+                dtype=_dtype(name, band.data_type, "float32"),
+                fill_value=band.nodata,
+            )
+
         return RasterLoadParams(
             _dtype(name, band.data_type, "float32"),
             fill_value=_fill_value(band),
