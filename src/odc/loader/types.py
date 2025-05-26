@@ -25,7 +25,7 @@ from odc.geo.geobox import GeoBox, GeoBoxBase
 T = TypeVar("T")
 
 BandKey = Tuple[str, int]
-"""Asset Name, band index within an asset (1 based)."""
+"""Asset Name, band index within an asset (1 based, 0 indicates "all the bands")."""
 
 BandIdentifier = Union[str, BandKey]
 """Alias or canonical band identifier."""
@@ -131,6 +131,53 @@ class RasterBandMetadata:
         return self.data_type
 
 
+@dataclass(eq=True, frozen=True)
+class AuxBandMetadata:
+    """
+    Metadata for an auxiliary band.
+    """
+
+    data_type: Optional[str] = None
+    """Numpy compatible dtype string."""
+
+    nodata: Optional[float] = None
+    """Nodata marker/fill_value."""
+
+    units: str = "1"
+    """Units of the data."""
+
+    dims: Tuple[str, ...] = ()
+    """Dimension names for this auxilliary band.
+
+    e.g. ("time",) or ("index",) or ()
+    """
+
+    def _repr_json_(self) -> Dict[str, Any]:
+        """
+        Return a JSON serializable representation of the AuxBandMetadata object.
+        """
+        return {
+            "data_type": self.data_type,
+            "nodata": _maybe_json(self.nodata),
+            "units": self.units,
+            "dims": self.dims,
+        }
+
+    @property
+    def unit(self) -> str:
+        """
+        Alias for units.
+        """
+        return self.units
+
+    @property
+    def dtype(self) -> str | None:
+        """
+        Alias for data_type.
+        """
+        return self.data_type
+
+
 @dataclass(eq=True)
 class FixedCoord:
     """
@@ -169,7 +216,7 @@ class RasterGroupMetadata:
     STAC Collection/Datacube Product abstraction.
     """
 
-    bands: Dict[BandKey, RasterBandMetadata]
+    bands: Mapping[BandKey, RasterBandMetadata | AuxBandMetadata]
     """
     Bands are assets that contain raster data.
 
@@ -243,6 +290,22 @@ class RasterGroupMetadata:
             dims = {k: v for k, v in dims.items() if k in band_dims}
 
         return dims
+
+    @property
+    def raster_bands(self) -> dict[BandKey, RasterBandMetadata]:
+        """
+        Return a dictionary of raster bands.
+        """
+        return {
+            k: v for k, v in self.bands.items() if isinstance(v, RasterBandMetadata)
+        }
+
+    @property
+    def aux_bands(self) -> dict[BandKey, AuxBandMetadata]:
+        """
+        Return a dictionary of auxiliary bands.
+        """
+        return {k: v for k, v in self.bands.items() if isinstance(v, AuxBandMetadata)}
 
 
 @dataclass(eq=True, frozen=True)
@@ -332,11 +395,39 @@ class RasterSource:
         return doc
 
 
-MultiBandRasterSource = Union[
-    Mapping[str, RasterSource],
-    Mapping[BandIdentifier, RasterSource],
-]
-"""Mapping from band name to RasterSource."""
+@dataclass(eq=True, frozen=True)
+class AuxDataSource:
+    """
+    Captures known information about a single auxiliary band.
+    """
+
+    uri: str
+    """Asset location."""
+
+    subdataset: Optional[str] = None
+    """Used for netcdf/hdf5 sources."""
+
+    meta: Optional[AuxBandMetadata] = None
+    """Expected raster dtype/nodata."""
+
+    driver_data: Any = None
+    """IO Driver specific extra data."""
+
+    def patch(self, **kwargs) -> "AuxDataSource":
+        """
+        Return a new object with updated fields.
+        """
+        return replace(self, **kwargs)
+
+    def strip(self) -> "AuxDataSource":
+        """
+        Compatibility with RasterSource.strip()
+        """
+        return self
+
+
+MultiBandSource = Mapping[str, RasterSource | AuxDataSource | None]
+"""Mapping from band name on output to DataSource, raster or auxiliary."""
 
 
 @dataclass
@@ -439,6 +530,45 @@ class RasterLoadParams:
             "resampling": self.resampling,
             "fail_on_error": self.fail_on_error,
             "dims": list(self.dims),
+        }
+
+
+@dataclass(eq=True)
+class AuxLoadParams:
+    """
+    Captures data loading configuration for auxiliary bands.
+    """
+
+    dtype: Optional[str] = None
+    """Output dtype, default same as source."""
+
+    fill_value: Optional[float] = None
+    """Value used in-place of missing data."""
+
+    @staticmethod
+    def same_as(src: Union[AuxBandMetadata, AuxDataSource]) -> "AuxLoadParams":
+        """Construct from source object."""
+        if isinstance(src, AuxBandMetadata):
+            meta = src
+        else:
+            meta = src.meta or AuxBandMetadata()
+
+        dtype = meta.data_type
+        if dtype is None:
+            dtype = "float32"
+
+        return AuxLoadParams(dtype=dtype, fill_value=meta.nodata)
+
+    def __dask_tokenize__(self):
+        return astuple(self)
+
+    def _repr_json_(self) -> Dict[str, Any]:
+        """
+        Return a JSON serializable representation of the AuxLoadParams object.
+        """
+        return {
+            "dtype": _maybe_json(self.dtype),
+            "fill_value": _maybe_json(self.fill_value),
         }
 
 
