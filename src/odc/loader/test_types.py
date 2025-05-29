@@ -119,3 +119,49 @@ def test_norm_nodata() -> None:
     nan = norm_nodata("nan")
     assert nan is not None
     assert math.isnan(nan)
+
+
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        (RasterGroupMetadata({}), RasterGroupMetadata({}), RasterGroupMetadata({})),
+        (
+            # a
+            RasterGroupMetadata(
+                bands={("a", 1): RasterBandMetadata("float32")},
+                aliases={"A": [("a", 1)]},
+            ),
+            # b
+            RasterGroupMetadata(
+                bands={
+                    ("b", 1): RasterBandMetadata("int16", -9999, dims=("y", "x", "w")),
+                    ("b", 2): RasterBandMetadata("int16", -9999),
+                },
+                aliases={
+                    "A": [("b", 2)],
+                    "B": [("b", 1)],
+                },
+                extra_dims={"w": 3},
+                extra_coords=(FixedCoord("w", ["a", "b", "c"]),),
+            ),
+            # expected
+            RasterGroupMetadata(
+                bands={
+                    ("a", 1): RasterBandMetadata("float32"),
+                    ("b", 1): RasterBandMetadata("int16", -9999, dims=("y", "x", "w")),
+                    ("b", 2): RasterBandMetadata("int16", -9999),
+                },
+                aliases={"A": [("a", 1), ("b", 2)], "B": [("b", 1)]},
+                extra_dims={"w": 3},
+                extra_coords=(FixedCoord("w", ["a", "b", "c"]),),
+            ),
+        ),
+    ],
+)
+def test_merge_metadata(a, b, expected) -> None:
+    assert a.merge(b) == expected
+    assert a.merge(a) == a
+    assert b.merge(b) == b
+
+    assert a.merge(a) is a
+    assert b.merge(b) is b
