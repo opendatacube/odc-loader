@@ -203,6 +203,20 @@ class RasterGroupMetadata:
         """
         return replace(self, **kwargs)
 
+    def merge(self, other: "RasterGroupMetadata") -> "RasterGroupMetadata":
+        """
+        Merge with another metadata object, using self as the primary source.
+        """
+        if self == other:
+            return self
+
+        bands = {**self.bands, **other.bands}
+        aliases = _merge_aliases(self.aliases, other.aliases)
+        extra_dims = {**self.extra_dims, **other.extra_dims}
+        extra_coords = _merge_unique(self.extra_coords, other.extra_coords)
+
+        return RasterGroupMetadata(bands, aliases, extra_dims, tuple(extra_coords))
+
     def _repr_json_(self) -> Dict[str, Any]:
         """
         Return a JSON serializable representation of the RasterGroupMetadata object.
@@ -650,3 +664,28 @@ def _maybe_json(
             return on_error(obj)
 
     return obj
+
+
+def _merge_unique(a: Sequence[T], b: Sequence[T]) -> list[T]:
+    """
+    Merge two sequences, removing duplicates.
+
+    :return: ``a`` + ``b``(without elements already in ``a``)
+    """
+    return [*a, *[v for v in b if v not in a]]
+
+
+def _merge_aliases(
+    a: dict[str, list[BandKey]], b: dict[str, list[BandKey]]
+) -> dict[str, list[BandKey]]:
+    """
+    Merge two alias dictionaries.
+    """
+
+    out = {**a}
+    for k, bb in b.items():
+        if k in out:
+            out[k] = _merge_unique(out[k], bb)
+        else:
+            out[k] = bb
+    return out
