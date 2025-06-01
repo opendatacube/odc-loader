@@ -18,6 +18,7 @@ from typing import (
 )
 
 import numpy as np
+import xarray as xr
 from numpy.typing import DTypeLike
 from odc.geo import Unset
 from odc.geo.geobox import GeoBox, GeoBoxBase
@@ -635,6 +636,35 @@ class DaskRasterReader(Protocol):
     ) -> "DaskRasterReader": ...
 
 
+class AuxReader(Protocol):
+    """
+    Protocol for auxiliary data readers.
+
+    Read auxiliary data.
+
+    :param srcs: auxiliary data sources grouped by time
+    :param cfg: Loading configuration
+    :param used_names: Names claimed by raster bands and their coordinates
+    :param available_coords: Available coordinates, typically ``time`` is useful
+    :param ctx: Load context
+    :param dask_layer_name: Suggested dask layer name, when reading with dask
+    :return: Auxiliary data loaded into a :py:class:`xarray.DataArray`
+    """
+
+    # pylint: disable=too-few-public-methods
+
+    def read(
+        self,
+        srcs: Sequence[Sequence[AuxDataSource]],
+        cfg: AuxLoadParams,
+        used_names: set[str],
+        available_coords: Mapping[str, xr.DataArray],
+        ctx: Any,
+        *,
+        dask_layer_name: str | None = None,
+    ) -> xr.DataArray: ...
+
+
 class ReaderDriver(Protocol):
     """
     Protocol for reader drivers.
@@ -662,6 +692,9 @@ class ReaderDriver(Protocol):
 
     @property
     def dask_reader(self) -> DaskRasterReader | None: ...
+
+    @property
+    def aux_reader(self) -> AuxReader | None: ...
 
 
 ReaderDriverSpec = Union[str, ReaderDriver]

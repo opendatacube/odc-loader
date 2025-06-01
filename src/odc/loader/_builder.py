@@ -1,5 +1,6 @@
 """stac.load - dc.load from STAC Items."""
 
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import dataclasses
@@ -43,6 +44,7 @@ from ._reader import (
 )
 from ._utils import SizedIterable, pmap
 from .types import (
+    AuxDataSource,
     AuxLoadParams,
     Band_DType,
     DaskRasterReader,
@@ -402,6 +404,10 @@ class DaskGraphBuilder:
             bands=[name],
         )
 
+    @property
+    def load_state(self) -> Any:
+        return self._load_state
+
 
 def _dask_open_reader(
     src: RasterSource,
@@ -666,7 +672,10 @@ def dask_chunked_load(
         chunks = {}
 
     raster_cfg, aux_cfg = _split_cfg(load_cfg)
+    # TODO: deal with no raster bands case `raster_cfg = {}`
     gbox = gbt.base
+    assert isinstance(gbox, GeoBox)
+
     extra_dims = template.extra_dims_full()
     chunk_shape = resolve_chunk_shape(
         len(tss),
@@ -687,11 +696,18 @@ def dask_chunked_load(
         rdr,
         chunks=chunks_normalized,
     )
-    assert isinstance(gbox, GeoBox)
+    ds = dask_loader.build(gbox, tss, raster_cfg)
     if aux_cfg:
-        # TODO: add aux band support
-        pass
-    return dask_loader.build(gbox, tss, raster_cfg)
+        ds = _add_aux_bands(
+            ds,
+            aux_cfg,
+            tyx_bins,
+            srcs,
+            rdr,
+            dask_loader.load_state,
+            use_dask=True,
+        )
+    return ds
 
 
 def denorm_ydim(x: tuple[T, ...], ydim: int) -> tuple[T, ...]:
@@ -826,8 +842,6 @@ def direct_chunked_load(
     Load in chunks but without using Dask.
     """
     # pylint: disable=too-many-locals
-    nt = len(tss)
-    nb = len(load_cfg)
     gbox = gbt.base
     assert isinstance(gbox, GeoBox)
     raster_cfg, aux_cfg = _split_cfg(load_cfg)
@@ -837,6 +851,8 @@ def direct_chunked_load(
         raster_cfg,
         template=template,
     )
+    nt = len(tss)
+    nb = len(raster_cfg)
     ny, nx = gbt.shape.yx
     total_tasks = nt * nb * ny * nx
     load_state = rdr.new_load(gbox)
@@ -859,10 +875,6 @@ def direct_chunked_load(
         t, y, x = task.idx_tyx
         return (task.band, t, y, x)
 
-    if aux_cfg:
-        # TODO: add aux band support
-        pass
-
     tasks = load_tasks(
         raster_cfg,
         tyx_bins,
@@ -880,6 +892,17 @@ def direct_chunked_load(
 
     for _ in _work:
         pass
+
+    if aux_cfg:
+        ds = _add_aux_bands(
+            ds,
+            aux_cfg,
+            tyx_bins,
+            srcs,
+            rdr,
+            load_state,
+            use_dask=False,
+        )
 
     rdr.finalise_load(load_state)
     return ds
@@ -954,3 +977,65 @@ def resolve_chunk_shape(
         extra_dims=extra_dims,
     )
     return tuple(int(ch[0]) for ch in resolved_chunks)
+
+
+def _add_aux_bands(
+    ds: xr.Dataset,
+    aux_cfg: Mapping[str, AuxLoadParams],
+    tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+    srcs: Sequence[MultiBandSource],
+    rdr: ReaderDriver,
+    ctx: Any,
+    use_dask: bool = False,
+) -> xr.Dataset:
+    aux_reader = rdr.aux_reader
+    if aux_reader is None:
+        raise ValueError("Auxiliary bands are present but no aux reader is available")
+
+    t_bins = _bin_by_time(tyx_bins)
+    for name, cfg in aux_cfg.items():
+        _srcs = _extract_aux_sources(name, srcs, t_bins)
+        used_names = set(map(str, ds.data_vars)) | set(map(str, ds.coords))
+        available_coords = {str(k): v for k, v in ds.coords.items()}
+        kw = {"dask_layer_name": name} if use_dask else {}
+
+        xx = aux_reader.read(
+            _srcs,
+            cfg,
+            used_names,
+            available_coords,
+            ctx,
+            **kw,
+        )
+        ds[name] = xx
+
+    return ds
+
+
+def _bin_by_time(
+    tyx_bins: Mapping[tuple[int, int, int], Sequence[int]],
+) -> list[tuple[int, ...]]:
+    nt = max(t for t, _, _ in tyx_bins) + 1
+    _bins: list[set[int]] = [set() for _ in range(nt)]
+    for (t, _, _), vv in tyx_bins.items():
+        _bins[t].update(vv)
+
+    return [tuple(sorted(b)) for b in _bins]
+
+
+def _extract_aux_sources(
+    band_name: str,
+    srcs: Sequence[MultiBandSource],
+    t_bins: Sequence[Sequence[int]],
+) -> list[list[AuxDataSource]]:
+    def _extract(ii: Sequence[int]) -> Iterator[AuxDataSource]:
+        for src_idx in ii:
+            if (src := srcs[src_idx].get(band_name, None)) is not None:
+                if isinstance(src, AuxDataSource):
+                    yield src
+                else:
+                    raise ValueError(
+                        f"Auxiliary band {band_name} is not a valid source"
+                    )
+
+    return [list(_extract(ii)) for ii in t_bins]
