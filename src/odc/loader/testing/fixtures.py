@@ -21,6 +21,7 @@ from odc.geo.xr import ODCExtensionDa
 
 from .._reader import expand_selection
 from ..types import (
+    AuxReader,
     BandKey,
     DaskRasterReader,
     MDParser,
@@ -252,4 +253,8 @@ class FakeReaderDriver:
 
     @property
     def dask_reader(self) -> DaskRasterReader | None:
+        return None
+
+    @property
+    def aux_reader(self) -> AuxReader | None:
         return None

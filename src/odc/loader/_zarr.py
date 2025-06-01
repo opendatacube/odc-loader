@@ -24,6 +24,7 @@ from odc.geo.geobox import GeoBox, GeoBoxBase, GeoboxTiles
 from odc.geo.xr import ODCExtensionDa, ODCExtensionDs, xr_coords, xr_reproject
 
 from .types import (
+    AuxReader,
     BandKey,
     DaskRasterReader,
     FixedCoord,
@@ -369,6 +370,10 @@ class XrMemReaderDriver:
     @property
     def dask_reader(self) -> DaskRasterReader | None:
         return XrMemReaderDask()
+
+    @property
+    def aux_reader(self) -> AuxReader | None:
+        return None
 
 
 def band_info(xx: xr.DataArray) -> RasterBandMetadata:

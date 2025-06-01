@@ -34,6 +34,7 @@ from ._reader import (
     same_nodata,
 )
 from .types import (
+    AuxReader,
     DaskRasterReader,
     MDParser,
     RasterLoadParams,
@@ -154,6 +155,10 @@ class RioDriver:
 
     @property
     def dask_reader(self) -> DaskRasterReader | None:
+        return None
+
+    @property
+    def aux_reader(self) -> AuxReader | None:
         return None
 
 
