@@ -18,6 +18,7 @@ from typing import (
 )
 
 import numpy as np
+import xarray as xr
 from numpy.typing import DTypeLike
 from odc.geo import Unset
 from odc.geo.geobox import GeoBox, GeoBoxBase
@@ -25,7 +26,7 @@ from odc.geo.geobox import GeoBox, GeoBoxBase
 T = TypeVar("T")
 
 BandKey = Tuple[str, int]
-"""Asset Name, band index within an asset (1 based)."""
+"""Asset Name, band index within an asset (1 based, 0 indicates "all the bands")."""
 
 BandIdentifier = Union[str, BandKey]
 """Alias or canonical band identifier."""
@@ -131,6 +132,53 @@ class RasterBandMetadata:
         return self.data_type
 
 
+@dataclass(eq=True, frozen=True)
+class AuxBandMetadata:
+    """
+    Metadata for an auxiliary band.
+    """
+
+    data_type: Optional[str] = None
+    """Numpy compatible dtype string."""
+
+    nodata: Optional[float] = None
+    """Nodata marker/fill_value."""
+
+    units: str = "1"
+    """Units of the data."""
+
+    dims: Tuple[str, ...] = ()
+    """Dimension names for this auxilliary band.
+
+    e.g. ("time",) or ("index",) or ()
+    """
+
+    def _repr_json_(self) -> Dict[str, Any]:
+        """
+        Return a JSON serializable representation of the AuxBandMetadata object.
+        """
+        return {
+            "data_type": self.data_type,
+            "nodata": _maybe_json(self.nodata),
+            "units": self.units,
+            "dims": self.dims,
+        }
+
+    @property
+    def unit(self) -> str:
+        """
+        Alias for units.
+        """
+        return self.units
+
+    @property
+    def dtype(self) -> str | None:
+        """
+        Alias for data_type.
+        """
+        return self.data_type
+
+
 @dataclass(eq=True)
 class FixedCoord:
     """
@@ -169,7 +217,7 @@ class RasterGroupMetadata:
     STAC Collection/Datacube Product abstraction.
     """
 
-    bands: Dict[BandKey, RasterBandMetadata]
+    bands: Mapping[BandKey, RasterBandMetadata | AuxBandMetadata]
     """
     Bands are assets that contain raster data.
 
@@ -203,6 +251,20 @@ class RasterGroupMetadata:
         """
         return replace(self, **kwargs)
 
+    def merge(self, other: "RasterGroupMetadata") -> "RasterGroupMetadata":
+        """
+        Merge with another metadata object, using self as the primary source.
+        """
+        if self == other:
+            return self
+
+        bands = {**self.bands, **other.bands}
+        aliases = _merge_aliases(self.aliases, other.aliases)
+        extra_dims = {**self.extra_dims, **other.extra_dims}
+        extra_coords = _merge_unique(self.extra_coords, other.extra_coords)
+
+        return RasterGroupMetadata(bands, aliases, extra_dims, tuple(extra_coords))
+
     def _repr_json_(self) -> Dict[str, Any]:
         """
         Return a JSON serializable representation of the RasterGroupMetadata object.
@@ -229,6 +291,22 @@ class RasterGroupMetadata:
             dims = {k: v for k, v in dims.items() if k in band_dims}
 
         return dims
+
+    @property
+    def raster_bands(self) -> dict[BandKey, RasterBandMetadata]:
+        """
+        Return a dictionary of raster bands.
+        """
+        return {
+            k: v for k, v in self.bands.items() if isinstance(v, RasterBandMetadata)
+        }
+
+    @property
+    def aux_bands(self) -> dict[BandKey, AuxBandMetadata]:
+        """
+        Return a dictionary of auxiliary bands.
+        """
+        return {k: v for k, v in self.bands.items() if isinstance(v, AuxBandMetadata)}
 
 
 @dataclass(eq=True, frozen=True)
@@ -318,11 +396,39 @@ class RasterSource:
         return doc
 
 
-MultiBandRasterSource = Union[
-    Mapping[str, RasterSource],
-    Mapping[BandIdentifier, RasterSource],
-]
-"""Mapping from band name to RasterSource."""
+@dataclass(eq=True, frozen=True)
+class AuxDataSource:
+    """
+    Captures known information about a single auxiliary band.
+    """
+
+    uri: str
+    """Asset location."""
+
+    subdataset: Optional[str] = None
+    """Used for netcdf/hdf5 sources."""
+
+    meta: Optional[AuxBandMetadata] = None
+    """Expected raster dtype/nodata."""
+
+    driver_data: Any = None
+    """IO Driver specific extra data."""
+
+    def patch(self, **kwargs) -> "AuxDataSource":
+        """
+        Return a new object with updated fields.
+        """
+        return replace(self, **kwargs)
+
+    def strip(self) -> "AuxDataSource":
+        """
+        Compatibility with RasterSource.strip()
+        """
+        return self
+
+
+MultiBandSource = Mapping[str, RasterSource | AuxDataSource | None]
+"""Mapping from band name on output to DataSource, raster or auxiliary."""
 
 
 @dataclass
@@ -428,6 +534,31 @@ class RasterLoadParams:
         }
 
 
+@dataclass(eq=True)
+class AuxLoadParams:
+    """
+    Captures data loading configuration for auxiliary bands.
+    """
+
+    dtype: Optional[str] = None
+    """Output dtype, default same as source."""
+
+    fill_value: Optional[float] = None
+    """Value used in-place of missing data."""
+
+    def __dask_tokenize__(self):
+        return astuple(self)
+
+    def _repr_json_(self) -> Dict[str, Any]:
+        """
+        Return a JSON serializable representation of the AuxLoadParams object.
+        """
+        return {
+            "dtype": _maybe_json(self.dtype),
+            "fill_value": _maybe_json(self.fill_value),
+        }
+
+
 class MDParser(Protocol):
     """
     Protocol for metadata parsers.
@@ -491,6 +622,35 @@ class DaskRasterReader(Protocol):
     ) -> "DaskRasterReader": ...
 
 
+class AuxReader(Protocol):
+    """
+    Protocol for auxiliary data readers.
+
+    Read auxiliary data.
+
+    :param srcs: auxiliary data sources grouped by time
+    :param cfg: Loading configuration
+    :param used_names: Names claimed by raster bands and their coordinates
+    :param available_coords: Available coordinates, typically ``time`` is useful
+    :param ctx: Load context
+    :param dask_layer_name: Suggested dask layer name, when reading with dask
+    :return: Auxiliary data loaded into a :py:class:`xarray.DataArray`
+    """
+
+    # pylint: disable=too-few-public-methods
+
+    def read(
+        self,
+        srcs: Sequence[Sequence[AuxDataSource]],
+        cfg: AuxLoadParams,
+        used_names: set[str],
+        available_coords: Mapping[str, xr.DataArray],
+        ctx: Any,
+        *,
+        dask_layer_name: str | None = None,
+    ) -> xr.DataArray: ...
+
+
 class ReaderDriver(Protocol):
     """
     Protocol for reader drivers.
@@ -518,6 +678,9 @@ class ReaderDriver(Protocol):
 
     @property
     def dask_reader(self) -> DaskRasterReader | None: ...
+
+    @property
+    def aux_reader(self) -> AuxReader | None: ...
 
 
 ReaderDriverSpec = Union[str, ReaderDriver]
@@ -650,3 +813,28 @@ def _maybe_json(
             return on_error(obj)
 
     return obj
+
+
+def _merge_unique(a: Sequence[T], b: Sequence[T]) -> list[T]:
+    """
+    Merge two sequences, removing duplicates.
+
+    :return: ``a`` + ``b``(without elements already in ``a``)
+    """
+    return [*a, *[v for v in b if v not in a]]
+
+
+def _merge_aliases(
+    a: dict[str, list[BandKey]], b: dict[str, list[BandKey]]
+) -> dict[str, list[BandKey]]:
+    """
+    Merge two alias dictionaries.
+    """
+
+    out = {**a}
+    for k, bb in b.items():
+        if k in out:
+            out[k] = _merge_unique(out[k], bb)
+        else:
+            out[k] = bb
+    return out

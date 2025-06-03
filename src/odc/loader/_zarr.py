@@ -24,6 +24,7 @@ from odc.geo.geobox import GeoBox, GeoBoxBase, GeoboxTiles
 from odc.geo.xr import ODCExtensionDa, ODCExtensionDs, xr_coords, xr_reproject
 
 from .types import (
+    AuxReader,
     BandKey,
     DaskRasterReader,
     FixedCoord,
@@ -370,6 +371,10 @@ class XrMemReaderDriver:
     def dask_reader(self) -> DaskRasterReader | None:
         return XrMemReaderDask()
 
+    @property
+    def aux_reader(self) -> AuxReader | None:
+        return None
+
 
 def band_info(xx: xr.DataArray) -> RasterBandMetadata:
     """
@@ -411,15 +416,15 @@ def raster_group_md(
             extra_dims=extra_dims or {},
         )
 
-    bands = base.bands.copy()
+    bands = {**base.bands}
     bands.update(
         {(str(k), 1): band_info(v) for k, v in src.data_vars.items() if v.ndim >= 2}
     )
 
-    edims = base.extra_dims.copy()
+    edims = {**base.extra_dims}
     edims.update({str(name): sz for name, sz in src.sizes.items() if name not in sdims})
 
-    aliases: dict[str, list[BandKey]] = base.aliases.copy()
+    aliases: dict[str, list[BandKey]] = {**base.aliases}
 
     extra_coords: list[FixedCoord] = list(base.extra_coords)
     supplied_coords = set(coord.name for coord in extra_coords)

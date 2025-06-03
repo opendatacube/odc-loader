@@ -1,5 +1,6 @@
 """stac.load - dc.load from STAC Items."""
 
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import dataclasses
@@ -43,9 +44,11 @@ from ._reader import (
 )
 from ._utils import SizedIterable, pmap
 from .types import (
+    AuxDataSource,
+    AuxLoadParams,
     Band_DType,
     DaskRasterReader,
-    MultiBandRasterSource,
+    MultiBandSource,
     RasterGroupMetadata,
     RasterLoadParams,
     RasterReader,
@@ -74,7 +77,7 @@ class MkArray(Protocol):
 @dataclasses.dataclass(frozen=True)
 class LoadChunkTask:
     """
-    Unit of work for dask graph builder.
+    Unit of work for dask graph builder (raster bands only).
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -122,7 +125,7 @@ class LoadChunkTask:
         return len(self.srcs) > 0 and any(len(src) > 0 for src in self.srcs)
 
     def resolve_sources(
-        self, srcs: Sequence[MultiBandRasterSource]
+        self, srcs: Sequence[MultiBandSource]
     ) -> List[List[tuple[int, RasterSource]]]:
         out: List[List[tuple[int, RasterSource]]] = []
 
@@ -130,7 +133,7 @@ class LoadChunkTask:
             _srcs: List[tuple[int, RasterSource]] = []
             for idx in layer:
                 src = srcs[idx].get(self.band, None)
-                if src is not None:
+                if src is not None and isinstance(src, RasterSource):
                     _srcs.append((idx, src))
             out.append(_srcs)
         return out
@@ -166,7 +169,7 @@ class DaskGraphBuilder:
         self,
         cfg: Mapping[str, RasterLoadParams],
         template: RasterGroupMetadata,
-        srcs: Sequence[MultiBandRasterSource],
+        srcs: Sequence[MultiBandSource],
         tyx_bins: Mapping[Tuple[int, int, int], List[int]],
         gbt: GeoboxTiles,
         env: Dict[str, Any],
@@ -401,6 +404,10 @@ class DaskGraphBuilder:
             bands=[name],
         )
 
+    @property
+    def load_state(self) -> Any:
+        return self._load_state
+
 
 def _dask_open_reader(
     src: RasterSource,
@@ -602,9 +609,9 @@ def mk_dataset(
 
 
 def chunked_load(
-    load_cfg: Mapping[str, RasterLoadParams],
+    load_cfg: Mapping[str, RasterLoadParams | AuxLoadParams],
     template: RasterGroupMetadata,
-    srcs: Sequence[MultiBandRasterSource],
+    srcs: Sequence[MultiBandSource],
     tyx_bins: Mapping[Tuple[int, int, int], List[int]],
     gbt: GeoboxTiles,
     tss: Sequence[datetime],
@@ -648,9 +655,9 @@ def chunked_load(
 
 
 def dask_chunked_load(
-    load_cfg: Mapping[str, RasterLoadParams],
+    load_cfg: Mapping[str, RasterLoadParams | AuxLoadParams],
     template: RasterGroupMetadata,
-    srcs: Sequence[MultiBandRasterSource],
+    srcs: Sequence[MultiBandSource],
     tyx_bins: Mapping[Tuple[int, int, int], List[int]],
     gbt: GeoboxTiles,
     tss: Sequence[datetime],
@@ -664,14 +671,23 @@ def dask_chunked_load(
     if chunks is None:
         chunks = {}
 
+    raster_cfg, aux_cfg = _split_cfg(load_cfg)
+    # TODO: deal with no raster bands case `raster_cfg = {}`
     gbox = gbt.base
+    assert isinstance(gbox, GeoBox)
+
     extra_dims = template.extra_dims_full()
     chunk_shape = resolve_chunk_shape(
-        len(tss), gbox, chunks, extra_dims=extra_dims, dtype=dtype
+        len(tss),
+        gbox,
+        chunks,
+        extra_dims=extra_dims,
+        dtype=dtype,
+        cfg=raster_cfg,
     )
     chunks_normalized = dict(zip(["time", "y", "x", *extra_dims], chunk_shape))
     dask_loader = DaskGraphBuilder(
-        load_cfg,
+        raster_cfg,
         template,
         srcs,
         tyx_bins,
@@ -680,8 +696,18 @@ def dask_chunked_load(
         rdr,
         chunks=chunks_normalized,
     )
-    assert isinstance(gbox, GeoBox)
-    return dask_loader.build(gbox, tss, load_cfg)
+    ds = dask_loader.build(gbox, tss, raster_cfg)
+    if aux_cfg:
+        ds = _add_aux_bands(
+            ds,
+            aux_cfg,
+            tyx_bins,
+            srcs,
+            rdr,
+            dask_loader.load_state,
+            use_dask=True,
+        )
+    return ds
 
 
 def denorm_ydim(x: tuple[T, ...], ydim: int) -> tuple[T, ...]:
@@ -790,10 +816,19 @@ def load_tasks(
                 )
 
 
+def _split_cfg(
+    cfg: Mapping[str, RasterLoadParams | AuxLoadParams],
+) -> tuple[Mapping[str, RasterLoadParams], Mapping[str, AuxLoadParams]]:
+    return (
+        {name: cfg for name, cfg in cfg.items() if isinstance(cfg, RasterLoadParams)},
+        {name: cfg for name, cfg in cfg.items() if isinstance(cfg, AuxLoadParams)},
+    )
+
+
 def direct_chunked_load(
-    load_cfg: Mapping[str, RasterLoadParams],
+    load_cfg: Mapping[str, RasterLoadParams | AuxLoadParams],
     template: RasterGroupMetadata,
-    srcs: Sequence[MultiBandRasterSource],
+    srcs: Sequence[MultiBandSource],
     tyx_bins: Mapping[Tuple[int, int, int], List[int]],
     gbt: GeoboxTiles,
     tss: Sequence[datetime],
@@ -811,10 +846,11 @@ def direct_chunked_load(
     nb = len(load_cfg)
     gbox = gbt.base
     assert isinstance(gbox, GeoBox)
+    raster_cfg, aux_cfg = _split_cfg(load_cfg)
     ds = mk_dataset(
         gbox,
         tss,
-        load_cfg,
+        raster_cfg,
         template=template,
     )
     ny, nx = gbt.shape.yx
@@ -840,7 +876,7 @@ def direct_chunked_load(
         return (task.band, t, y, x)
 
     tasks = load_tasks(
-        load_cfg,
+        raster_cfg,
         tyx_bins,
         gbt,
         nt=nt,
@@ -857,12 +893,23 @@ def direct_chunked_load(
     for _ in _work:
         pass
 
+    if aux_cfg:
+        ds = _add_aux_bands(
+            ds,
+            aux_cfg,
+            tyx_bins,
+            srcs,
+            rdr,
+            load_state,
+            use_dask=False,
+        )
+
     rdr.finalise_load(load_state)
     return ds
 
 
 def _largest_dtype(
-    cfg: Mapping[str, RasterLoadParams] | None,
+    cfg: Mapping[str, RasterLoadParams | AuxLoadParams] | None,
     fallback: str | np.dtype = "float32",
 ) -> np.dtype:
     if isinstance(fallback, str):
@@ -903,17 +950,19 @@ def resolve_chunk_shape(
     gbox: GeoBoxBase,
     chunks: Mapping[str, int | Literal["auto"]],
     dtype: Any | None = None,
-    cfg: Mapping[str, RasterLoadParams] | None = None,
+    cfg: Mapping[str, RasterLoadParams | AuxLoadParams] | None = None,
     extra_dims: Mapping[str, int] | None = None,
 ) -> Tuple[int, ...]:
     """
-    Compute chunk size for time, y and x dimensions and extra dims.
+    Compute chunk size for time, y and x dimensions and extra dims for raster
+    bands only.
 
     Spatial dimension chunks need to be suppliead with ``y,x`` keys.
 
     :returns: Chunk shape in (T,Y,X, *extra_dims) order
     """
     if dtype is None and cfg:
+        cfg, _ = _split_cfg(cfg)
         dtype = _largest_dtype(cfg, "float32")
 
     chunks = {**chunks}
@@ -928,3 +977,65 @@ def resolve_chunk_shape(
         extra_dims=extra_dims,
     )
     return tuple(int(ch[0]) for ch in resolved_chunks)
+
+
+def _add_aux_bands(
+    ds: xr.Dataset,
+    aux_cfg: Mapping[str, AuxLoadParams],
+    tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+    srcs: Sequence[MultiBandSource],
+    rdr: ReaderDriver,
+    ctx: Any,
+    use_dask: bool = False,
+) -> xr.Dataset:
+    aux_reader = rdr.aux_reader
+    if aux_reader is None:
+        raise ValueError("Auxiliary bands are present but no aux reader is available")
+
+    t_bins = _bin_by_time(tyx_bins)
+    for name, cfg in aux_cfg.items():
+        _srcs = _extract_aux_sources(name, srcs, t_bins)
+        used_names = set(map(str, ds.data_vars)) | set(map(str, ds.coords))
+        available_coords = {str(k): v for k, v in ds.coords.items()}
+        kw = {"dask_layer_name": name} if use_dask else {}
+
+        xx = aux_reader.read(
+            _srcs,
+            cfg,
+            used_names,
+            available_coords,
+            ctx,
+            **kw,
+        )
+        ds[name] = xx
+
+    return ds
+
+
+def _bin_by_time(
+    tyx_bins: Mapping[tuple[int, int, int], Sequence[int]],
+) -> list[tuple[int, ...]]:
+    nt = max(t for t, _, _ in tyx_bins) + 1
+    _bins: list[set[int]] = [set() for _ in range(nt)]
+    for (t, _, _), vv in tyx_bins.items():
+        _bins[t].update(vv)
+
+    return [tuple(sorted(b)) for b in _bins]
+
+
+def _extract_aux_sources(
+    band_name: str,
+    srcs: Sequence[MultiBandSource],
+    t_bins: Sequence[Sequence[int]],
+) -> list[list[AuxDataSource]]:
+    def _extract(ii: Sequence[int]) -> Iterator[AuxDataSource]:
+        for src_idx in ii:
+            if (src := srcs[src_idx].get(band_name, None)) is not None:
+                if isinstance(src, AuxDataSource):
+                    yield src
+                else:
+                    raise ValueError(
+                        f"Auxiliary band {band_name} is not a valid source"
+                    )
+
+    return [list(_extract(ii)) for ii in t_bins]
