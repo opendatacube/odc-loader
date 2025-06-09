@@ -18,6 +18,7 @@ from .types import (
     AuxBandMetadata,
     AuxLoadParams,
     Band_DType,
+    GlobalLoadContext,
     RasterBandMetadata,
     RasterLoadParams,
     RasterSource,
@@ -29,7 +30,7 @@ from .types import (
 
 def _dask_read_adaptor(
     src: RasterSource,
-    ctx: Any,
+    ctx: GlobalLoadContext,
     cfg: RasterLoadParams,
     dst_geobox: GeoBox,
     driver: ReaderDriver,
@@ -52,8 +53,8 @@ class ReaderDaskAdaptor:
     def __init__(
         self,
         driver: ReaderDriver,
-        env: dict[str, Any] | None = None,
-        ctx: Any | None = None,
+        env: Mapping[str, Any] | None = None,
+        ctx: GlobalLoadContext | None = None,
         src: RasterSource | None = None,
         cfg: RasterLoadParams | None = None,
         layer_name: str = "",
@@ -99,7 +100,7 @@ class ReaderDaskAdaptor:
         self,
         src: RasterSource,
         cfg: RasterLoadParams,
-        ctx: Any,
+        ctx: GlobalLoadContext,
         layer_name: str,
         idx: int,
     ) -> "ReaderDaskAdaptor":

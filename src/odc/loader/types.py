@@ -13,6 +13,7 @@ from typing import (
     Protocol,
     Sequence,
     Tuple,
+    TypeAlias,
     TypeVar,
     Union,
 )
@@ -34,9 +35,11 @@ BandIdentifier = Union[str, BandKey]
 BandQuery = Optional[Union[str, Sequence[str]]]
 """One|All|Some bands"""
 
-ReaderSubsetSelection = Any
+ReaderSubsetSelection: TypeAlias = Any
+GlobalLoadContext: TypeAlias = Any
+LocalLoadContext: TypeAlias = Any
 
-Band_DType = Union[DTypeLike, Mapping[str, DTypeLike]]
+Band_DType: TypeAlias = Union[DTypeLike, Mapping[str, DTypeLike]]
 
 
 @dataclass(eq=True, frozen=True)
@@ -629,7 +632,7 @@ class DaskRasterReader(Protocol):
         self,
         src: RasterSource,
         cfg: RasterLoadParams,
-        ctx: Any,
+        ctx: GlobalLoadContext,
         *,
         layer_name: str,
         idx: int,
@@ -659,7 +662,7 @@ class AuxReader(Protocol):
         cfg: AuxLoadParams,
         used_names: set[str],
         available_coords: Mapping[str, xr.DataArray],
-        ctx: Any,
+        ctx: GlobalLoadContext,
         *,
         dask_layer_name: str | None = None,
     ) -> xr.DataArray: ...
@@ -675,17 +678,17 @@ class ReaderDriver(Protocol):
         geobox: GeoBox,
         *,
         chunks: None | Dict[str, int] = None,
-    ) -> Any: ...
+    ) -> GlobalLoadContext: ...
 
-    def finalise_load(self, load_state: Any) -> Any: ...
+    def finalise_load(self, load_state: GlobalLoadContext) -> Any: ...
 
     def capture_env(self) -> dict[str, Any]: ...
 
     def restore_env(
-        self, env: dict[str, Any], load_state: Any
-    ) -> ContextManager[Any]: ...
+        self, env: dict[str, Any], load_state: GlobalLoadContext
+    ) -> ContextManager[LocalLoadContext]: ...
 
-    def open(self, src: RasterSource, ctx: Any) -> RasterReader: ...
+    def open(self, src: RasterSource, ctx: LocalLoadContext) -> RasterReader: ...
 
     @property
     def md_parser(self) -> MDParser | None: ...

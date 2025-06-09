@@ -48,12 +48,14 @@ from .types import (
     AuxLoadParams,
     Band_DType,
     DaskRasterReader,
+    GlobalLoadContext,
     MultiBandSource,
     RasterGroupMetadata,
     RasterLoadParams,
     RasterReader,
     RasterSource,
     ReaderDriver,
+    ReaderSubsetSelection,
     T,
 )
 
@@ -89,7 +91,7 @@ class LoadChunkTask:
     idx: Tuple[int, ...]
     shape: Tuple[int, ...]
     ydim: int = 1
-    selection: Any = None  # optional slice into extra dims
+    selection: ReaderSubsetSelection | None = None  # optional slice into extra dims
 
     @property
     def idx_tyx(self) -> Tuple[int, int, int]:
@@ -229,7 +231,15 @@ class DaskGraphBuilder:
             template=self.template,
         )
 
-    def _norm_load_state(self, cfg_layer: dict[Key, Any]) -> tuple[Any, Any]:
+    def _norm_load_state(
+        self, cfg_layer: dict[Key, Any]
+    ) -> tuple[GlobalLoadContext, GlobalLoadContext | Key]:
+        """
+        Handle dask version of load state.
+
+        :returns: Tuple of (original, dask_key) when ``load_state`` is a dask collection.
+        :returns: Tuple of (original, original) when ``load_state`` is not a dask collection.
+        """
         load_state = self._load_state
         if is_dask_collection(load_state):
             cfg_layer.update(load_state.dask)
@@ -241,7 +251,7 @@ class DaskGraphBuilder:
         self,
         name: str,
         dsk: dict[Key, Any],
-        load_state_dsk: Any,
+        load_state_dsk: GlobalLoadContext | Key,
     ) -> dict[Key, Any]:
         src_key = f"open-{name}-{self._tk}"
 
@@ -413,7 +423,7 @@ def _dask_open_reader(
     src: RasterSource,
     rdr: ReaderDriver,
     env: Dict[str, Any],
-    load_state: Any,
+    load_state: GlobalLoadContext,
 ) -> RasterReader:
     with rdr.restore_env(env, load_state) as ctx:
         return rdr.open(src, ctx)
@@ -428,7 +438,7 @@ def _dask_loader_tyx(
     cfg: RasterLoadParams,
     rdr: ReaderDriver,
     env: Dict[str, Any],
-    load_state: Any,
+    load_state: GlobalLoadContext,
     selection: Any | None = None,
 ):
     assert cfg.dtype is not None
@@ -985,7 +995,7 @@ def _add_aux_bands(
     tyx_bins: Mapping[Tuple[int, int, int], List[int]],
     srcs: Sequence[MultiBandSource],
     rdr: ReaderDriver,
-    ctx: Any,
+    ctx: GlobalLoadContext,
     use_dask: bool = False,
 ) -> xr.Dataset:
     aux_reader = rdr.aux_reader

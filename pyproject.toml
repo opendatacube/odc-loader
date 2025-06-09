@@ -50,12 +50,12 @@ enable_error_code = ["explicit-override"]
 show_error_codes = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+explicit_package_bases = true
 
 [tool.isort]
 profile = "black"
 
 [tool.pylint.messages_control]
-
 max-line-length = 120
 max-args = 10
 max-positional-arguments = 12
