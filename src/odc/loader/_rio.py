@@ -82,26 +82,50 @@ GDAL_CLOUD_DEFAULTS = {
 # pylint: disable=too-few-public-methods
 
 
+class LocalContext:
+    """
+    Local context for a single load operation.
+
+    TODO: open file handle cache goes here
+    """
+
+    def __init__(self) -> None:
+        pass
+
+
+class GlobalContext:
+    """
+    Shared across all Readers for single ``.load``.
+    """
+
+    def __init__(self, geobox: GeoBox, chunks: Dict[str, int] | None = None) -> None:
+        self.geobox = geobox
+        self.chunks = chunks
+        self._local_ctx: Any | None = None
+
+    def __getstate__(self) -> dict[str, Any]:
+        return {"geobox": self.geobox, "chunks": self.chunks}
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.geobox = state["geobox"]
+        self.chunks = state["chunks"]
+        self._local_ctx = None
+
+    def finalise(self) -> None:
+        self._local_ctx = None
+
+    def local_ctx(self, cls: type) -> Any:
+        if self._local_ctx is None:
+            self._local_ctx = cls()
+        return self._local_ctx
+
+
 class RioReader:
     """
     Reader part of RIO driver.
     """
 
-    class LoaderState:
-        """
-        Shared across all Readers for single ``.load``.
-
-        TODO: open file handle cache goes here
-        """
-
-        def __init__(self, geobox: GeoBox, is_dask: bool) -> None:
-            self.geobox = geobox
-            self.is_dask = is_dask
-
-        def finalise(self) -> None:
-            pass
-
-    def __init__(self, src: RasterSource, ctx: "RioReader.LoaderState") -> None:
+    def __init__(self, src: RasterSource, ctx: LocalContext) -> None:
         self._src = src
         self._ctx = ctx
 
@@ -118,7 +142,9 @@ class RioReader:
 
 class RioDriver:
     """
-    Protocol for readers.
+    Reader driver using rasterio for reading rasters.
+
+    Implements ReaderDriver interface.
     """
 
     def new_load(
@@ -126,10 +152,10 @@ class RioDriver:
         geobox: GeoBox,
         *,
         chunks: None | Dict[str, int] = None,
-    ) -> RioReader.LoaderState:
-        return RioReader.LoaderState(geobox, is_dask=chunks is not None)
+    ) -> GlobalContext:
+        return GlobalContext(geobox, chunks=chunks)
 
-    def finalise_load(self, load_state: RioReader.LoaderState) -> Any:
+    def finalise_load(self, load_state: GlobalContext) -> Any:
         return load_state.finalise()
 
     def capture_env(self) -> Dict[str, Any]:
@@ -137,15 +163,15 @@ class RioDriver:
 
     @contextmanager
     def restore_env(
-        self, env: Dict[str, Any], load_state: RioReader.LoaderState
-    ) -> Iterator[RioReader.LoaderState]:
+        self, env: Dict[str, Any], load_state: GlobalContext
+    ) -> Iterator[LocalContext]:
         with rio_env(**env):
-            yield load_state
+            yield load_state.local_ctx(LocalContext)
 
     def open(
         self,
         src: RasterSource,
-        ctx: RioReader.LoaderState,
+        ctx: LocalContext,
     ) -> RioReader:
         return RioReader(src, ctx)
 
