@@ -8,7 +8,7 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any, Iterator, TypeAlias
 
 import dask.array as da
 import fsspec
@@ -28,6 +28,8 @@ from .types import (
     BandKey,
     DaskRasterReader,
     FixedCoord,
+    GlobalLoadContext,
+    LocalLoadContext,
     MDParser,
     RasterBandMetadata,
     RasterGroupMetadata,
@@ -37,9 +39,9 @@ from .types import (
 )
 
 # TODO: tighten specs for Zarr*
-SomeDoc = Mapping[str, Any]
-ZarrSpec = Mapping[str, Any]
-ZarrSpecDict = dict[str, Any]
+SomeDoc: TypeAlias = Mapping[str, Any]
+ZarrSpec: TypeAlias = Mapping[str, Any]
+ZarrSpecDict: TypeAlias = dict[str, Any]
 # pylint: disable=too-few-public-methods
 
 
@@ -324,6 +326,8 @@ class XrMemReaderDask:
 class XrMemReaderDriver:
     """
     Read from in memory xarray.Dataset or zarr spec document.
+
+    Implements ReaderDriver interface.
     """
 
     def __init__(
@@ -348,7 +352,7 @@ class XrMemReaderDriver:
     ) -> Context:
         return Context(geobox, chunks, driver=self)
 
-    def finalise_load(self, load_state: Context) -> Context:
+    def finalise_load(self, load_state: GlobalLoadContext) -> GlobalLoadContext:
         return load_state
 
     def capture_env(self) -> dict[str, Any]:
@@ -356,11 +360,11 @@ class XrMemReaderDriver:
 
     @contextmanager
     def restore_env(
-        self, env: dict[str, Any], load_state: Context
-    ) -> Iterator[Context]:
+        self, env: dict[str, Any], load_state: GlobalLoadContext
+    ) -> Iterator[LocalLoadContext]:
         yield load_state.with_env(env)
 
-    def open(self, src: RasterSource, ctx: Context) -> XrMemReader:
+    def open(self, src: RasterSource, ctx: LocalLoadContext) -> XrMemReader:
         return XrMemReader(from_raster_source(src, ctx))
 
     @property

@@ -11,7 +11,7 @@ import shutil
 import tempfile
 from collections import abc
 from contextlib import contextmanager
-from typing import Any, Dict, Generator, Iterator, Optional
+from typing import Any, Generator, Iterator, Optional
 
 import numpy as np
 import rasterio
@@ -24,6 +24,8 @@ from ..types import (
     AuxReader,
     BandKey,
     DaskRasterReader,
+    GlobalLoadContext,
+    LocalLoadContext,
     MDParser,
     RasterGroupMetadata,
     RasterLoadParams,
@@ -125,37 +127,34 @@ class FakeMDPlugin:
         return _patch(self._driver_data)
 
 
+class LoadState:
+    """
+    Shared state for all readers for a given load.
+    """
+
+    def __init__(
+        self,
+        geobox: GeoBox,
+        meta: RasterGroupMetadata,
+    ) -> None:
+        self.geobox = geobox
+        self.meta = meta
+        self.finalised = False
+
+    def with_env(self, env: dict[str, Any]) -> "LoadState":
+        return LoadState(self.geobox, self.meta)
+
+
 class FakeReader:
     """
     Fake reader for testing.
     """
 
-    class LoadState:
-        """
-        Shared state for all readers for a given load.
-        """
-
-        def __init__(
-            self,
-            geobox: GeoBox,
-            meta: RasterGroupMetadata,
-            env: dict[str, Any],
-            is_dask: bool,
-        ) -> None:
-            self.geobox = geobox
-            self.meta = meta
-            self.env = env
-            self.is_dask = is_dask
-            self.finalised = False
-
-        def with_env(self, env: dict[str, Any]) -> "FakeReader.LoadState":
-            return FakeReader.LoadState(self.geobox, self.meta, env, self.is_dask)
-
-    def __init__(self, src: RasterSource, load_state: "FakeReader.LoadState") -> None:
+    def __init__(self, src: RasterSource, load_state: LoadState) -> None:
         self._src = src
         self._load_state = load_state
 
-    def _extra_dims(self) -> Dict[str, int]:
+    def _extra_dims(self) -> dict[str, int]:
         return self._load_state.meta.extra_dims_full()
 
     def read(
@@ -210,7 +209,9 @@ class FakeReader:
 
 class FakeReaderDriver:
     """
-    Fake reader for testing.
+    Fake reader driver for testing.
+
+    Implements ReaderDriver interface.
     """
 
     def __init__(
@@ -218,33 +219,40 @@ class FakeReaderDriver:
         group_md: RasterGroupMetadata,
         *,
         parser: MDParser | None = None,
+        aux_reader: AuxReader | None = None,
+        dask_reader: DaskRasterReader | None = None,
     ) -> None:
         self._group_md = group_md
         self._parser = parser or FakeMDPlugin(group_md, None)
+        self._aux_reader = aux_reader
+        self._dask_reader = dask_reader
 
     def new_load(
         self,
         geobox: GeoBox,
         *,
-        chunks: None | Dict[str, int] = None,
-    ) -> FakeReader.LoadState:
-        return FakeReader.LoadState(geobox, self._group_md, {}, chunks is not None)
+        chunks: None | dict[str, int] = None,
+    ) -> GlobalLoadContext:
+        assert chunks is None or isinstance(chunks, dict)
+        return LoadState(geobox, self._group_md)
 
-    def finalise_load(self, load_state: FakeReader.LoadState) -> Any:
+    def finalise_load(self, load_state: GlobalLoadContext) -> GlobalLoadContext:
         assert load_state.finalised is False
         load_state.finalised = True
         return load_state
 
-    def capture_env(self) -> Dict[str, Any]:
+    def capture_env(self) -> dict[str, Any]:
         return {}
 
     @contextmanager
     def restore_env(
-        self, env: Dict[str, Any], load_state: FakeReader.LoadState
-    ) -> Iterator[FakeReader.LoadState]:
+        self, env: dict[str, Any], load_state: GlobalLoadContext
+    ) -> Iterator[LocalLoadContext]:
+        assert isinstance(load_state, LoadState)
         yield load_state.with_env(env)
 
-    def open(self, src: RasterSource, ctx: FakeReader.LoadState) -> FakeReader:
+    def open(self, src: RasterSource, ctx: LocalLoadContext) -> FakeReader:
+        assert isinstance(ctx, LoadState)
         return FakeReader(src, ctx)
 
     @property
@@ -253,8 +261,8 @@ class FakeReaderDriver:
 
     @property
     def dask_reader(self) -> DaskRasterReader | None:
-        return None
+        return self._dask_reader
 
     @property
     def aux_reader(self) -> AuxReader | None:
-        return None
+        return self._aux_reader
