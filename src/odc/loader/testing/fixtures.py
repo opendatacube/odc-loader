@@ -142,6 +142,7 @@ class LoadState:
         self.finalised = False
 
     def with_env(self, env: dict[str, Any]) -> "LoadState":
+        assert isinstance(env, dict)
         return LoadState(self.geobox, self.meta)
 
 
@@ -152,10 +153,10 @@ class FakeReader:
 
     def __init__(self, src: RasterSource, load_state: LoadState) -> None:
         self._src = src
-        self._load_state = load_state
+        self._ctx = load_state
 
     def _extra_dims(self) -> dict[str, int]:
-        return self._load_state.meta.extra_dims_full()
+        return self._ctx.meta.extra_dims_full()
 
     def read(
         self,

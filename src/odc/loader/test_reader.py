@@ -21,12 +21,15 @@ from ._reader import (
     resolve_band_query,
     resolve_dst_dtype,
     resolve_dst_nodata,
+    resolve_load_cfg,
     resolve_src_nodata,
     same_nodata,
 )
 from ._rio import RioDriver, configure_rio, get_rio_env, rio_read
 from .testing.fixtures import FakeReaderDriver, with_temp_tiff
 from .types import (
+    AuxBandMetadata,
+    AuxLoadParams,
     RasterBandMetadata,
     RasterGroupMetadata,
     RasterLoadParams,
@@ -407,3 +410,41 @@ def test_dask_reader_adaptor(dtype: str) -> None:
     yx_roi, pix = yy
     assert pix.shape == gbox[yx_roi].shape.yx
     assert pix.dtype == dtype
+
+
+def test_resolve_load_cfg() -> None:
+    cfg = resolve_load_cfg(
+        {
+            "band": RasterBandMetadata("uint8", 255),
+            "bb": RasterBandMetadata(),
+            "aux": AuxBandMetadata("int16", -1),
+        },
+        resampling={"band": "bilinear", "*": "mode"},
+    )
+    assert "band" in cfg
+    assert "aux" in cfg
+
+    c = cfg["band"]
+    assert isinstance(c, RasterLoadParams)
+    assert c.dtype == "uint8"
+    assert c.dims == ()
+    assert c.resampling == "bilinear"
+    assert c.fill_value == 255
+    assert c.src_nodata_fallback is None
+    assert c.src_nodata_override is None
+    assert c.fail_on_error is True
+
+    c = cfg["bb"]
+    assert isinstance(c, RasterLoadParams)
+    assert c.dtype == "float32"
+    assert c.dims == ()
+    assert c.resampling == "mode"
+    assert c.fill_value is None
+    assert c.src_nodata_fallback is None
+    assert c.src_nodata_override is None
+    assert c.fail_on_error is True
+
+    c = cfg["aux"]
+    assert isinstance(c, AuxLoadParams)
+    assert c.dtype == "int16"
+    assert c.fill_value == -1
