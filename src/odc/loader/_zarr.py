@@ -24,6 +24,9 @@ from odc.geo.geobox import GeoBox, GeoBoxBase, GeoboxTiles
 from odc.geo.xr import ODCExtensionDa, ODCExtensionDs, xr_coords, xr_reproject
 
 from .types import (
+    AuxBandMetadata,
+    AuxDataSource,
+    AuxLoadParams,
     AuxReader,
     BandKey,
     DaskRasterReader,
@@ -108,7 +111,7 @@ class Context:
         self,
         geobox: GeoBox,
         chunks: None | dict[str, int],
-        driver: Any | None = None,
+        fs: fsspec.AbstractFileSystem | None = None,
     ) -> None:
         gbt: GeoboxTiles | None = None
         if chunks is not None:
@@ -119,18 +122,12 @@ class Context:
             gbt = GeoboxTiles(geobox, (cy, cx))
         self.geobox = geobox
         self.chunks = chunks
-        self.driver = driver
+        self.fs = fs
         self.gbt = gbt
 
     def with_env(self, env: dict[str, Any]) -> "Context":
         assert isinstance(env, dict)
-        return Context(self.geobox, self.chunks, driver=self.driver)
-
-    @property
-    def fs(self) -> fsspec.AbstractFileSystem | None:
-        if self.driver is None:
-            return None
-        return self.driver.fs
+        return Context(self.geobox, self.chunks, fs=self.fs)
 
 
 def from_raster_source(
@@ -323,6 +320,46 @@ class XrMemReaderDask:
         return XrMemReaderDask(xx_warped, cfg, layer_name=layer_name)
 
 
+class XrMemReaderAux:
+    """
+    Implements protocol for auxiliary readers.
+    """
+
+    def __init__(self) -> None:
+        pass
+
+    def read(
+        self,
+        srcs: Sequence[Sequence[AuxDataSource]],
+        cfg: AuxLoadParams,
+        used_names: set[str],
+        available_coords: Mapping[str, xr.DataArray],
+        ctx: GlobalLoadContext,
+        *,
+        dask_layer_name: str | None = None,
+    ) -> xr.DataArray:
+        assert (cfg, used_names, available_coords, ctx, dask_layer_name) is not None
+
+        def _extract(srcs: Sequence[Sequence[AuxDataSource]]) -> Iterator[xr.DataArray]:
+            for row in srcs:
+                for src in row:
+                    if isinstance(src.driver_data, xr.DataArray):
+                        yield src.driver_data
+                    else:
+                        # TODO: parity with raster sources
+                        raise NotImplementedError(
+                            "Auxiliary readers only support in memory xarray.DataArray"
+                        )
+
+        xx = list(_extract(srcs))
+        assert len(xx) > 0
+
+        if len(xx) == 1:
+            return xx[0]
+
+        return xr.concat(xx, dim=xx[0].dims[0])
+
+
 class XrMemReaderDriver:
     """
     Read from in memory xarray.Dataset or zarr spec document.
@@ -350,7 +387,7 @@ class XrMemReaderDriver:
         *,
         chunks: None | dict[str, int] = None,
     ) -> Context:
-        return Context(geobox, chunks, driver=self)
+        return Context(geobox, chunks, fs=self.fs)
 
     def finalise_load(self, load_state: GlobalLoadContext) -> GlobalLoadContext:
         return load_state
@@ -377,17 +414,25 @@ class XrMemReaderDriver:
 
     @property
     def aux_reader(self) -> AuxReader | None:
-        return None
+        return XrMemReaderAux()
 
 
-def band_info(xx: xr.DataArray) -> RasterBandMetadata:
+def band_info(xx: xr.DataArray) -> RasterBandMetadata | AuxBandMetadata:
     """
     Extract band metadata from xarray.DataArray
     """
     oo: ODCExtensionDa = xx.odc
-    ydim = oo.ydim
+
+    if xx.ndim < 2:
+        return AuxBandMetadata(
+            data_type=str(xx.dtype),
+            nodata=oo.nodata,
+            units=xx.attrs.get("units", "1"),
+            dims=(),
+        )
 
     if xx.ndim > 2:
+        ydim = oo.ydim
         dims = tuple(str(d) for d in xx.dims)
         dims = dims[:ydim] + ("y", "x") + dims[ydim + 2 :]
     else:
@@ -399,6 +444,15 @@ def band_info(xx: xr.DataArray) -> RasterBandMetadata:
         units=xx.attrs.get("units", "1"),
         dims=dims,
     )
+
+
+def _raster_band_coords(src: xr.Dataset) -> set[str]:
+    coords: set[str] = set()
+    for dv in src.data_vars.values():
+        if dv.odc.geobox is not None:
+            coords.update(map(str, dv.coords))
+
+    return coords
 
 
 def raster_group_md(
@@ -421,19 +475,15 @@ def raster_group_md(
         )
 
     bands = {**base.bands}
-    bands.update(
-        {(str(k), 1): band_info(v) for k, v in src.data_vars.items() if v.ndim >= 2}
-    )
+    bands.update({(str(k), 1): band_info(v) for k, v in src.data_vars.items()})
 
     edims = {**base.extra_dims}
-    edims.update({str(name): sz for name, sz in src.sizes.items() if name not in sdims})
-
     aliases: dict[str, list[BandKey]] = {**base.aliases}
-
     extra_coords: list[FixedCoord] = list(base.extra_coords)
     supplied_coords = set(coord.name for coord in extra_coords)
 
-    for coord in src.coords.values():
+    for coord_name in _raster_band_coords(src):
+        coord = src.coords[coord_name]
         if len(coord.dims) != 1 or coord.dims[0] in sdims:
             # Only 1-d non-spatial coords
             continue
@@ -441,11 +491,13 @@ def raster_group_md(
         if coord.name in supplied_coords:
             continue
 
+        edims.setdefault(str(coord.dims[0]), len(coord.values))
+
         extra_coords.append(
             FixedCoord(
-                coord.name,
-                coord.values,
-                dim=coord.dims[0],
+                str(coord.name),
+                coord.values.tolist(),
+                dim=str(coord.dims[0]),
                 units=coord.attrs.get("units", "1"),
             )
         )
@@ -609,5 +661,4 @@ def _resolve_src_dataset(
     if isinstance(md, xr.Dataset):
         return md
 
-    # TODO: support stac items and datacube datasets
     return fallback
