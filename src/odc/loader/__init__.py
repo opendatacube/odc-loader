@@ -10,6 +10,7 @@ from ._reader import (
     resolve_load_cfg,
     resolve_src_nodata,
 )
+from ._rio import RioDriver, RioReader, configure_rio, configure_s3_access
 from .types import (
     BandIdentifier,
     BandKey,
@@ -43,6 +44,10 @@ __all__ = (
     "resolve_dst_nodata",
     "resolve_dst_dtype",
     "resolve_chunk_shape",
+    "configure_rio",
+    "RioDriver",
+    "RioReader",
+    "configure_s3_access",
 )
 
 
