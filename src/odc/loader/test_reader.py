@@ -448,3 +448,16 @@ def test_resolve_load_cfg() -> None:
     assert isinstance(c, AuxLoadParams)
     assert c.dtype == "int16"
     assert c.fill_value == -1
+
+
+def test_rio_driver_init() -> None:
+    driver = RioDriver()
+    assert driver.md_parser is None
+    assert driver.aux_reader is None
+    assert driver.dask_reader is None
+
+    a, b, c = [object() for _ in range(3)]
+    driver = RioDriver(md_parser=a, aux_reader=b, dask_reader=c)  # type: ignore
+    assert driver.md_parser is a
+    assert driver.aux_reader is b
+    assert driver.dask_reader is c

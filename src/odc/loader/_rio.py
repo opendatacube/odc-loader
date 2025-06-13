@@ -147,6 +147,16 @@ class RioDriver:
     Implements ReaderDriver interface.
     """
 
+    def __init__(
+        self,
+        md_parser: MDParser | None = None,
+        aux_reader: AuxReader | None = None,
+        dask_reader: DaskRasterReader | None = None,
+    ) -> None:
+        self._md_parser = md_parser
+        self._aux_reader = aux_reader
+        self._dask_reader = dask_reader
+
     def new_load(
         self,
         geobox: GeoBox,
@@ -177,15 +187,15 @@ class RioDriver:
 
     @property
     def md_parser(self) -> MDParser | None:
-        return None
+        return self._md_parser
 
     @property
     def dask_reader(self) -> DaskRasterReader | None:
-        return None
+        return self._dask_reader
 
     @property
     def aux_reader(self) -> AuxReader | None:
-        return None
+        return self._aux_reader
 
 
 class _GlobalRioConfig:
