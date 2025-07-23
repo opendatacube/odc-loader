@@ -33,7 +33,7 @@ Homepage = "https://github.com/opendatacube/odc-loader/"
 
 [project.optional-dependencies]
 botocore = ["botocore"]
-zarr = ["zarr>=2.18.3,<3"]
+zarr = ["zarr>=2.18.3,<4"]
 
 [build-system]
 requires = ["flit_core >=3.2,<4"]
