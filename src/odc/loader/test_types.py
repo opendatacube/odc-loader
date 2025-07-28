@@ -9,6 +9,7 @@ from odc.geo.geobox import GeoBox
 from .types import (
     AuxBandMetadata,
     AuxDataSource,
+    AuxLoadParams,
     FixedCoord,
     RasterBandMetadata,
     RasterGroupMetadata,
@@ -239,6 +240,142 @@ def test_driver_data_integration() -> None:
     band_json = json_repr["bands"]["test.1"]
     assert "driver_data" in band_json
     assert band_json["driver_data"] == driver_data
+
+
+def test_aux_load_params_meta() -> None:
+    """Test meta field in AuxLoadParams."""
+    # Test default value
+    params = AuxLoadParams()
+    assert params.meta is None
+
+    # Test with custom meta
+    meta = AuxBandMetadata("float32", -9999, "reflectance", ("time",))
+    params_with_meta = AuxLoadParams(meta=meta)
+    assert params_with_meta.meta == meta
+
+    # Test with different meta configurations
+    meta_int = AuxBandMetadata("int16", 0, "counts", ("index",))
+    params_int = AuxLoadParams(meta=meta_int)
+    assert params_int.meta == meta_int
+
+    meta_str = AuxBandMetadata("uint8", None, "index", ())
+    params_str = AuxLoadParams(meta=meta_str)
+    assert params_str.meta == meta_str
+
+    # Test same_as method includes meta
+    aux_meta = AuxBandMetadata("float64", -1.5, "temperature", ("time", "level"))
+    aux_source = AuxDataSource("test.nc", meta=aux_meta)
+    result = AuxLoadParams.same_as(aux_source)
+    assert result.meta == aux_meta
+    assert result.dtype == "float64"
+    assert result.fill_value == -1.5
+
+    # Test same_as with AuxBandMetadata directly
+    result_direct = AuxLoadParams.same_as(aux_meta)
+    assert result_direct.meta == aux_meta
+    assert result_direct.dtype == "float64"
+    assert result_direct.fill_value == -1.5
+
+    # Test JSON serialization
+    json_repr = params_with_meta._repr_json_()
+    assert "meta" in json_repr
+    assert json_repr["meta"] == meta._repr_json_()
+
+    # Test JSON serialization with None meta
+    json_repr_none = params._repr_json_()
+    assert "meta" in json_repr_none
+    assert json_repr_none["meta"] is None
+
+
+def test_aux_load_params_integration() -> None:
+    """Test AuxLoadParams integration with existing functionality."""
+    # Test with AuxDataSource
+    meta = AuxBandMetadata("float32", -9999, "reflectance", ("time",))
+    aux_source = AuxDataSource("test.nc", meta=meta)
+
+    # Create AuxLoadParams from the source
+    params = AuxLoadParams.same_as(aux_source)
+    assert params.meta == meta
+    assert params.dtype == "float32"
+    assert params.fill_value == -9999
+
+    # Test JSON serialization of the params
+    json_repr = params._repr_json_()
+    assert "meta" in json_repr
+    assert json_repr["meta"] == meta._repr_json_()
+    assert json_repr["dtype"] == "float32"
+    assert json_repr["fill_value"] == -9999
+
+
+def test_raster_load_params_meta() -> None:
+    """Test meta field in RasterLoadParams."""
+    # Test default value
+    params = RasterLoadParams()
+    assert params.meta is None
+
+    # Test with custom meta
+    meta = RasterBandMetadata("float32", -9999, "reflectance", ("y", "x", "wavelength"))
+    params_with_meta = RasterLoadParams(meta=meta)
+    assert params_with_meta.meta == meta
+
+    # Test with different meta configurations
+    meta_int = RasterBandMetadata("int16", 0, "counts", ("y", "x"))
+    params_int = RasterLoadParams(meta=meta_int)
+    assert params_int.meta == meta_int
+
+    meta_str = RasterBandMetadata("uint8", None, "index", ("y", "x", "time"))
+    params_str = RasterLoadParams(meta=meta_str)
+    assert params_str.meta == meta_str
+
+    # Test same_as method includes meta
+    raster_meta = RasterBandMetadata(
+        "float64", -1.5, "temperature", ("y", "x", "level")
+    )
+    raster_source = RasterSource("test.tif", meta=raster_meta)
+    result = RasterLoadParams.same_as(raster_source)
+    assert result.meta == raster_meta
+    assert result.dtype == "float64"
+    assert result.fill_value == -1.5
+    assert result.dims == ("y", "x", "level")
+
+    # Test same_as with RasterBandMetadata directly
+    result_direct = RasterLoadParams.same_as(raster_meta)
+    assert result_direct.meta == raster_meta
+    assert result_direct.dtype == "float64"
+    assert result_direct.fill_value == -1.5
+    assert result_direct.dims == ("y", "x", "level")
+
+    # Test JSON serialization
+    json_repr = params_with_meta._repr_json_()
+    assert "meta" in json_repr
+    assert json_repr["meta"] == meta._repr_json_()
+
+    # Test JSON serialization with None meta
+    json_repr_none = params._repr_json_()
+    assert "meta" in json_repr_none
+    assert json_repr_none["meta"] is None
+
+
+def test_raster_load_params_integration() -> None:
+    """Test RasterLoadParams integration with existing functionality."""
+    # Test with RasterSource
+    meta = RasterBandMetadata("float32", -9999, "reflectance", ("y", "x", "wavelength"))
+    raster_source = RasterSource("test.tif", meta=meta)
+
+    # Create RasterLoadParams from the source
+    params = RasterLoadParams.same_as(raster_source)
+    assert params.meta == meta
+    assert params.dtype == "float32"
+    assert params.fill_value == -9999
+    assert params.dims == ("y", "x", "wavelength")
+
+    # Test JSON serialization of the params
+    json_repr = params._repr_json_()
+    assert "meta" in json_repr
+    assert json_repr["meta"] == meta._repr_json_()
+    assert json_repr["dtype"] == "float32"
+    assert json_repr["fill_value"] == -9999
+    assert json_repr["dims"] == ["y", "x", "wavelength"]
 
 
 @pytest.mark.parametrize(
