@@ -70,6 +70,9 @@ class RasterBandMetadata:
     e.g. ("y", "x", "wavelength")
     """
 
+    driver_data: Any = None
+    """IO Driver specific extra data."""
+
     def with_defaults(self, defaults: "RasterBandMetadata") -> "RasterBandMetadata":
         """
         Merge with another metadata object, using self as the primary source.
@@ -81,6 +84,7 @@ class RasterBandMetadata:
             nodata=with_default(self.nodata, defaults.nodata),
             units=with_default(self.units, defaults.units, "1"),
             dims=with_default(self.dims, defaults.dims, ()),
+            driver_data=with_default(self.driver_data, defaults.driver_data),
         )
 
     def patch(self, **kwargs) -> "RasterBandMetadata":
@@ -101,6 +105,12 @@ class RasterBandMetadata:
             "nodata": _maybe_json(self.nodata),
             "units": self.units,
             "dims": self.dims,
+            "driver_data": _maybe_json(
+                self.driver_data,
+                allow_nan=False,
+                roundtrip=True,
+                on_error="SET, NOT JSON SERIALIZABLE",
+            ),
         }
 
     @property
@@ -156,6 +166,9 @@ class AuxBandMetadata:
     e.g. ("time",) or ("index",) or ()
     """
 
+    driver_data: Any = None
+    """IO Driver specific extra data."""
+
     def _repr_json_(self) -> Dict[str, Any]:
         """
         Return a JSON serializable representation of the AuxBandMetadata object.
@@ -165,6 +178,12 @@ class AuxBandMetadata:
             "nodata": _maybe_json(self.nodata),
             "units": self.units,
             "dims": self.dims,
+            "driver_data": _maybe_json(
+                self.driver_data,
+                allow_nan=False,
+                roundtrip=True,
+                on_error="SET, NOT JSON SERIALIZABLE",
+            ),
         }
 
     @property

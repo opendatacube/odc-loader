@@ -7,6 +7,8 @@ import pytest
 from odc.geo.geobox import GeoBox
 
 from .types import (
+    AuxBandMetadata,
+    AuxDataSource,
     FixedCoord,
     RasterBandMetadata,
     RasterGroupMetadata,
@@ -119,6 +121,124 @@ def test_norm_nodata() -> None:
     nan = norm_nodata("nan")
     assert nan is not None
     assert math.isnan(nan)
+
+
+def test_raster_band_metadata_driver_data() -> None:
+    """Test driver_data field in RasterBandMetadata."""
+    # Test default value
+    meta = RasterBandMetadata()
+    assert meta.driver_data is None
+
+    # Test with custom driver_data
+    custom_data = {"key": "value", "nested": {"data": 123}}
+    meta_with_data = RasterBandMetadata(driver_data=custom_data)
+    assert meta_with_data.driver_data == custom_data
+
+    # Test with different types of driver_data
+    meta_int = RasterBandMetadata(driver_data=42)
+    assert meta_int.driver_data == 42
+
+    meta_str = RasterBandMetadata(driver_data="driver_specific_info")
+    assert meta_str.driver_data == "driver_specific_info"
+
+    meta_list = RasterBandMetadata(driver_data=[1, 2, 3])
+    assert meta_list.driver_data == [1, 2, 3]
+
+    # Test with_defaults method includes driver_data
+    defaults = RasterBandMetadata(driver_data={"default": "data"})
+    result = meta.with_defaults(defaults)
+    assert result.driver_data == {"default": "data"}
+
+    # Test that existing driver_data takes precedence
+    existing_data = {"existing": "data"}
+    meta_existing = RasterBandMetadata(driver_data=existing_data)
+    result = meta_existing.with_defaults(defaults)
+    assert result.driver_data == existing_data
+
+    # Test JSON serialization
+    json_repr = meta_with_data._repr_json_()
+    assert "driver_data" in json_repr
+    assert json_repr["driver_data"] == custom_data
+
+    # Test JSON serialization with non-serializable data
+    non_serializable = object()  # object is not JSON serializable
+    meta_non_serializable = RasterBandMetadata(driver_data=non_serializable)
+    json_repr = meta_non_serializable._repr_json_()
+    assert "driver_data" in json_repr
+    assert json_repr["driver_data"] == "SET, NOT JSON SERIALIZABLE"
+
+
+def test_aux_band_metadata_driver_data() -> None:
+    """Test driver_data field in AuxBandMetadata."""
+    # Test default value
+    meta = AuxBandMetadata()
+    assert meta.driver_data is None
+
+    # Test with custom driver_data
+    custom_data = {"aux_key": "aux_value", "nested": {"aux_data": 456}}
+    meta_with_data = AuxBandMetadata(driver_data=custom_data)
+    assert meta_with_data.driver_data == custom_data
+
+    # Test with different types of driver_data
+    meta_int = AuxBandMetadata(driver_data=99)
+    assert meta_int.driver_data == 99
+
+    meta_str = AuxBandMetadata(driver_data="auxiliary_driver_info")
+    assert meta_str.driver_data == "auxiliary_driver_info"
+
+    meta_tuple = AuxBandMetadata(driver_data=(1, 2, 3))
+    assert meta_tuple.driver_data == (1, 2, 3)
+
+    # Test JSON serialization
+    json_repr = meta_with_data._repr_json_()
+    assert "driver_data" in json_repr
+    assert json_repr["driver_data"] == custom_data
+
+    # Test JSON serialization with non-serializable data
+    non_serializable = object()  # object is not JSON serializable
+    meta_non_serializable = AuxBandMetadata(driver_data=non_serializable)
+    json_repr = meta_non_serializable._repr_json_()
+    assert "driver_data" in json_repr
+    assert json_repr["driver_data"] == "SET, NOT JSON SERIALIZABLE"
+
+
+def test_driver_data_consistency() -> None:
+    """Test that driver_data behaves consistently across different metadata types."""
+    test_data = {"test": "data", "number": 42}
+
+    # Test RasterBandMetadata
+    raster_meta = RasterBandMetadata(driver_data=test_data)
+    assert raster_meta.driver_data == test_data
+
+    # Test AuxBandMetadata
+    aux_meta = AuxBandMetadata(driver_data=test_data)
+    assert aux_meta.driver_data == test_data
+
+    # Test that they can be used in RasterSource and AuxDataSource
+    raster_source = RasterSource("test.tif", driver_data=test_data)
+    assert raster_source.driver_data == test_data
+
+    aux_source = AuxDataSource("test.nc", driver_data=test_data)
+    assert aux_source.driver_data == test_data
+
+
+def test_driver_data_integration() -> None:
+    """Test driver_data integration with existing functionality."""
+    # Test with RasterGroupMetadata
+    driver_data = {"compression": "lzw", "tilesize": 512}
+    band_meta = RasterBandMetadata("float32", -9999, driver_data=driver_data)
+
+    group_meta = RasterGroupMetadata({("test", 1): band_meta})
+
+    # Verify the driver_data is preserved in the group
+    stored_band_meta = group_meta.bands[("test", 1)]
+    assert stored_band_meta.driver_data == driver_data
+
+    # Test JSON serialization of the group
+    json_repr = group_meta._repr_json_()
+    band_json = json_repr["bands"]["test.1"]
+    assert "driver_data" in band_json
+    assert band_json["driver_data"] == driver_data
 
 
 @pytest.mark.parametrize(
