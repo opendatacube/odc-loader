@@ -816,11 +816,12 @@ def _maybe_json(
         on_error = lambda _: "** NOT JSON SERIALIZABLE **"
 
     if not callable(on_error):
-        on_error = lambda _: on_error
+        error_value = on_error
+        on_error = lambda _: error_value
 
     try:
         json_txt = json.dumps(obj, allow_nan=allow_nan)
-    except ValueError:
+    except (ValueError, TypeError):
         return on_error(obj)
 
     if roundtrip:
