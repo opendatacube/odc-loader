@@ -52,9 +52,10 @@ __all__ = (
 
 
 def __getattr__(name: str) -> str:
+    # pylint: disable=import-outside-toplevel
     from importlib.metadata import version
 
     if name == "__version__":
         return version("odc_loader")
-    else:
-        raise AttributeError(f"module {__name__} has no attribute {name}")
+
+    raise AttributeError(f"module {__name__} has no attribute {name}")
