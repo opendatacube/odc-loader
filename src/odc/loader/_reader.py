@@ -152,24 +152,26 @@ def resolve_load_cfg(
         return band.nodata
 
     def _resolve(
-        name: str, band: RasterBandMetadata | AuxBandMetadata
+        name: str, meta: RasterBandMetadata | AuxBandMetadata
     ) -> RasterLoadParams | AuxLoadParams:
-        if isinstance(band, AuxBandMetadata):
+        if isinstance(meta, AuxBandMetadata):
             return AuxLoadParams(
-                dtype=_dtype(name, band.data_type, "float32"),
-                fill_value=band.nodata,
+                dtype=_dtype(name, meta.data_type, "float32"),
+                fill_value=meta.nodata,
+                meta=meta,
             )
 
         return RasterLoadParams(
-            _dtype(name, band.data_type, "float32"),
-            fill_value=_fill_value(band),
+            _dtype(name, meta.data_type, "float32"),
+            fill_value=_fill_value(meta),
             use_overviews=use_overviews,
             resampling=_resampling(name, "nearest"),
             fail_on_error=fail_on_error,
-            dims=band.dims,
+            dims=meta.dims,
+            meta=meta,
         )
 
-    return {name: _resolve(name, band) for name, band in bands.items()}
+    return {name: _resolve(name, meta) for name, meta in bands.items()}
 
 
 def resolve_src_nodata(

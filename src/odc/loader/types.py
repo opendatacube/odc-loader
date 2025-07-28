@@ -500,6 +500,9 @@ class RasterLoadParams:
     dims: Tuple[str, ...] = ()
     """Dimension names for this band."""
 
+    meta: Optional[RasterBandMetadata] = None
+    """Expected raster band metadata."""
+
     def patch(self, **kwargs) -> "RasterLoadParams":
         """
         Return a new object with updated fields.
@@ -530,7 +533,9 @@ class RasterLoadParams:
         if dtype is None:
             dtype = "float32"
 
-        return RasterLoadParams(dtype=dtype, fill_value=meta.nodata, dims=meta.dims)
+        return RasterLoadParams(
+            dtype=dtype, fill_value=meta.nodata, dims=meta.dims, meta=meta
+        )
 
     @property
     def nearest(self) -> bool:
@@ -544,6 +549,7 @@ class RasterLoadParams:
         """
         Return a JSON serializable representation of the RasterLoadParams object.
         """
+        # pylint: disable=protected-access
         return {
             "dtype": _maybe_json(self.dtype, on_error=str),
             "fill_value": _maybe_json(self.fill_value),
@@ -553,6 +559,7 @@ class RasterLoadParams:
             "resampling": self.resampling,
             "fail_on_error": self.fail_on_error,
             "dims": list(self.dims),
+            "meta": self.meta._repr_json_() if self.meta is not None else None,
         }
 
 
@@ -568,6 +575,9 @@ class AuxLoadParams:
     fill_value: Optional[float] = None
     """Value used in-place of missing data."""
 
+    meta: Optional[AuxBandMetadata] = None
+    """Expected auxiliary band metadata."""
+
     @staticmethod
     def same_as(src: Union[AuxBandMetadata, AuxDataSource]) -> "AuxLoadParams":
         """Construct from source object."""
@@ -580,7 +590,7 @@ class AuxLoadParams:
         if dtype is None:
             dtype = "float32"
 
-        return AuxLoadParams(dtype=dtype, fill_value=meta.nodata)
+        return AuxLoadParams(dtype=dtype, fill_value=meta.nodata, meta=meta)
 
     def __dask_tokenize__(self):
         return astuple(self)
@@ -589,9 +599,11 @@ class AuxLoadParams:
         """
         Return a JSON serializable representation of the AuxLoadParams object.
         """
+        # pylint: disable=protected-access
         return {
             "dtype": _maybe_json(self.dtype),
             "fill_value": _maybe_json(self.fill_value),
+            "meta": self.meta._repr_json_() if self.meta is not None else None,
         }
 
 
