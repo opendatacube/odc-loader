@@ -578,6 +578,12 @@ class AuxLoadParams:
     meta: Optional[AuxBandMetadata] = None
     """Expected auxiliary band metadata."""
 
+    def patch(self, **kwargs) -> "AuxLoadParams":
+        """
+        Return a new object with updated fields.
+        """
+        return replace(self, **kwargs)
+
     @staticmethod
     def same_as(src: Union[AuxBandMetadata, AuxDataSource]) -> "AuxLoadParams":
         """Construct from source object."""

@@ -378,6 +378,51 @@ def test_raster_load_params_integration() -> None:
     assert json_repr["dims"] == ["y", "x", "wavelength"]
 
 
+def test_aux_load_params_patch() -> None:
+    """Test patch method in AuxLoadParams."""
+    # Test default params
+    params = AuxLoadParams()
+    assert params.dtype is None
+    assert params.fill_value is None
+    assert params.meta is None
+
+    # Test patching individual fields
+    patched_dtype = params.patch(dtype="float32")
+    assert patched_dtype.dtype == "float32"
+    assert patched_dtype.fill_value is None
+    assert patched_dtype.meta is None
+
+    patched_fill_value = params.patch(fill_value=-9999)
+    assert patched_fill_value.dtype is None
+    assert patched_fill_value.fill_value == -9999
+    assert patched_fill_value.meta is None
+
+    # Test patching meta field
+    meta = AuxBandMetadata("int16", 0, "counts", ("time",))
+    patched_meta = params.patch(meta=meta)
+    assert patched_meta.dtype is None
+    assert patched_meta.fill_value is None
+    assert patched_meta.meta == meta
+
+    # Test patching multiple fields
+    patched_multiple = params.patch(dtype="uint8", fill_value=255, meta=meta)
+    assert patched_multiple.dtype == "uint8"
+    assert patched_multiple.fill_value == 255
+    assert patched_multiple.meta == meta
+
+    # Test patching existing params
+    existing_params = AuxLoadParams("float64", -1.5, meta)
+    patched_existing = existing_params.patch(dtype="int32", fill_value=0)
+    assert patched_existing.dtype == "int32"
+    assert patched_existing.fill_value == 0
+    assert patched_existing.meta == meta  # Should remain unchanged
+
+    # Test that original object is not modified
+    assert existing_params.dtype == "float64"
+    assert existing_params.fill_value == -1.5
+    assert existing_params.meta == meta
+
+
 @pytest.mark.parametrize(
     "a, b, expected",
     [
