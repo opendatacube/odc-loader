@@ -9,6 +9,7 @@ permissions: {}
 
 jobs:
   quality:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -28,6 +29,7 @@ jobs:
         run: make check
 
   run-tests:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     strategy:
       matrix:
