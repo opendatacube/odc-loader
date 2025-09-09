@@ -339,6 +339,27 @@ def test_memreader_aux(
     assert oo.aux.dtype == ds.aux.dtype
     assert oo.xx.shape == (1, *gbox.shape.yx)
 
+    # again, aux only this time
+    cfgs.pop("xx")
+    oo = chunked_load(
+        cfgs,
+        template,
+        srcs,
+        tyx_bins,
+        gbt,
+        tss,
+        env,
+        driver,
+        chunks=chunks,
+    )
+    assert isinstance(oo, xr.Dataset)
+    assert "aux" in oo
+    assert oo.aux.dtype == ds.aux.dtype
+    assert oo.aux.shape == ds.aux.shape
+    assert "xx" not in oo
+    assert "x" not in oo.coords
+    assert "y" not in oo.coords
+
 
 def test_extract_zarr_spec() -> None:
     assert extract_zarr_spec({}) is None
