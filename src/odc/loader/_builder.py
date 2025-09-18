@@ -26,6 +26,7 @@ from typing import (
 
 import numpy as np
 import xarray as xr
+import dask
 from dask import array as da
 from dask import is_dask_collection
 from dask.array.core import normalize_chunks
@@ -36,6 +37,7 @@ from dask.typing import Key
 from numpy.typing import DTypeLike
 from odc.geo.geobox import GeoBox, GeoBoxBase, GeoboxTiles
 from odc.geo.xr import xr_coords
+from packaging.version import Version
 
 from ._reader import (
     ReaderDaskAdaptor,
@@ -61,6 +63,8 @@ from .types import (
 )
 
 DaskBuilderMode: TypeAlias = Literal["mem", "concurrency"]
+DASK_VERSION = Version(dask.__version__)
+DASK_GE_20250100 = DASK_VERSION.release >= (2025, 1, 0)
 
 
 class MkArray(Protocol):
@@ -144,14 +148,22 @@ class LoadChunkTask:
     def resolve_sources_dask(
         self, dask_key: str, dsk: Mapping[Key, Any] | None = None
     ) -> list[list[tuple[str, int]]]:
+        if DASK_GE_20250100:
+            from dask.task_spec import TaskRef, List
+
+            klass = TaskRef
+            wrapper = List
+        else:
+            klass = tuple
+            wrapper = list
         if dsk is None:
-            return [[(dask_key, idx) for idx in layer] for layer in self.srcs]
+            return wrapper([wrapper([klass((dask_key, idx)) for idx in layer]) for layer in self.srcs])
 
         # Skip missing sources
-        return [
-            [(dask_key, idx) for idx in layer if (dask_key, idx) in dsk]
+        return wrapper([
+            wrapper([klass((dask_key, idx)) for idx in layer if (dask_key, idx) in dsk])
             for layer in self.srcs
-        ]
+        ])
 
 
 def _default_dask_mode() -> DaskBuilderMode:
@@ -302,12 +314,26 @@ class DaskGraphBuilder:
                     rdr_cache[src_hash] = rdr
 
                 fut = rdr.read(dst_gbox, selection=task.selection, idx=idx)
-                keys_out.append(fut.key)
+                if DASK_GE_20250100:
+                    from dask.task_spec import TaskRef
+                    keys_out.append(TaskRef(fut.key))
+                else:
+                    keys_out.append(fut.key)
                 dsk.update(fut.dask)
 
-            out.append(keys_out)
+            if DASK_GE_20250100:
+                from dask.task_spec import List
 
-        return out
+                out.append(List(keys_out))
+            else:
+                out.append(keys_out)
+
+        if DASK_GE_20250100:
+            from dask.task_spec import List
+
+            return List(out)
+        else:
+            return out
 
     def __call__(
         self,
@@ -370,19 +396,39 @@ class DaskGraphBuilder:
         for task in self.load_tasks(name, shape[0]):
             task_key: Key = (band_layer, *task.idx)
             if dask_reader is None:
-                dsk[task_key] = (
-                    _dask_loader_tyx,
-                    task.resolve_sources_dask(open_layer, layers[open_layer]),
-                    gbt_dsk,
-                    quote(task.idx_tyx[1:]),
-                    quote(task.prefix_dims),
-                    quote(task.postfix_dims),
-                    cfg_dsk,
-                    self.rdr,
-                    self.env,
-                    load_state_dsk,
-                    task.selection,
-                )
+                if DASK_GE_20250100:
+                    from dask.task_spec import Task, TaskRef
+
+                    dsk[task_key] = Task(
+                        task_key,
+                        _dask_loader_tyx,
+                        task.resolve_sources_dask(open_layer, layers[open_layer]),
+                        TaskRef(gbt_dsk),
+                        quote(task.idx_tyx[1:]),
+                        quote(task.prefix_dims),
+                        quote(task.postfix_dims),
+                        TaskRef(cfg_dsk),
+                        self.rdr,
+                        self.env,
+                        load_state_dsk,
+                        task.selection,
+                        _data_producer=True,
+                    )
+
+                else:
+                    dsk[task_key] = (
+                        _dask_loader_tyx,
+                        task.resolve_sources_dask(open_layer, layers[open_layer]),
+                        gbt_dsk,
+                        quote(task.idx_tyx[1:]),
+                        quote(task.prefix_dims),
+                        quote(task.postfix_dims),
+                        cfg_dsk,
+                        self.rdr,
+                        self.env,
+                        load_state_dsk,
+                        task.selection,
+                    )
             else:
                 srcs_futures = self._task_futures(
                     task,
@@ -391,15 +437,29 @@ class DaskGraphBuilder:
                     layers[open_layer],
                     rdr_cache=rdr_cache,
                 )
+                if DASK_GE_20250100:
+                    from dask.task_spec import Task
 
-                dsk[task_key] = (
-                    _dask_fuser,
-                    srcs_futures,
-                    task.shape,
-                    dtype,
-                    fill_value,
-                    ydim - 1,
-                )
+                    dsk[task_key] = Task(
+                        task_key,
+                        _dask_fuser,
+                        srcs_futures,
+                        task.shape,
+                        dtype,
+                        fill_value,
+                        ydim - 1,
+                        _data_producer=True,
+                    )
+                else:
+                    dsk[task_key] = (
+                        _dask_fuser,
+                        srcs_futures,
+                        task.shape,
+                        dtype,
+                        fill_value,
+                        ydim - 1,
+                    )
+
 
         dsk = HighLevelGraph(layers, layer_deps)
         return da.Array(dsk, band_layer, chunks, dtype=dtype, shape=shape)
