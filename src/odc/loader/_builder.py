@@ -615,7 +615,10 @@ def mk_dataset(
         xx.encoding.update(grid_mapping=crs_coord_name)
         return xx
 
-    return xr.Dataset({name: _maker(name, band) for name, band in bands.items()})
+    return xr.Dataset(
+        {name: _maker(name, band) for name, band in bands.items()},
+        coords=coords,
+    )
 
 
 def chunked_load(
@@ -678,6 +681,7 @@ def dask_chunked_load(
     chunks: Mapping[str, int | Literal["auto"]] | None = None,
 ) -> xr.Dataset:
     """Builds Dask graph for data loading."""
+    # pylint: disable=too-many-locals
     if chunks is None:
         chunks = {}
 
@@ -989,6 +993,16 @@ def resolve_chunk_shape(
     return tuple(int(ch[0]) for ch in resolved_chunks)
 
 
+def _used_names(ds: xr.Dataset) -> set[str]:
+    """
+    Get names of data variables and coordinates that are in-use.
+    """
+    names = set(map(str, ds.data_vars))
+    for dv in ds.data_vars.values():
+        names.update(map(str, dv.coords))
+    return names
+
+
 def _add_aux_bands(
     ds: xr.Dataset,
     aux_cfg: Mapping[str, AuxLoadParams],
@@ -1002,22 +1016,29 @@ def _add_aux_bands(
     if aux_reader is None:
         raise ValueError("Auxiliary bands are present but no aux reader is available")
 
+    # Coords that are present at dataset level only, but not referenced by any
+    # data variable, are considered to be available but not in-use. We remove
+    # them from the dataset, but keep around in case aux reader wants to use
+    # them for it's output.
+    available_coords = {str(k): v for k, v in ds.coords.items()}
+    ds = ds.drop_vars(set(available_coords) - _used_names(ds))
+
     t_bins = _bin_by_time(tyx_bins)
     for name, cfg in aux_cfg.items():
         _srcs = _extract_aux_sources(name, srcs, t_bins)
-        used_names = set(map(str, ds.data_vars)) | set(map(str, ds.coords))
-        available_coords = {str(k): v for k, v in ds.coords.items()}
         kw = {"dask_layer_name": name} if use_dask else {}
 
         xx = aux_reader.read(
             _srcs,
             cfg,
-            used_names,
+            _used_names(ds),
             available_coords,
             ctx,
             **kw,
         )
         ds[name] = xx
+
+        available_coords.update({str(k): v for k, v in ds.coords.items()})
 
     return ds
 
