@@ -20,6 +20,7 @@ from typing import (
     Protocol,
     Sequence,
     Tuple,
+    TypeAlias,
     cast,
 )
 
@@ -59,7 +60,7 @@ from .types import (
     T,
 )
 
-DaskBuilderMode = Literal["mem", "concurrency"]
+DaskBuilderMode: TypeAlias = Literal["mem", "concurrency"]
 
 
 class MkArray(Protocol):

@@ -26,13 +26,13 @@ from odc.geo.geobox import GeoBox, GeoBoxBase
 
 T = TypeVar("T")
 
-BandKey = Tuple[str, int]
+BandKey: TypeAlias = Tuple[str, int]
 """Asset Name, band index within an asset (1 based, 0 indicates "all the bands")."""
 
-BandIdentifier = Union[str, BandKey]
+BandIdentifier: TypeAlias = Union[str, BandKey]
 """Alias or canonical band identifier."""
 
-BandQuery = Optional[Union[str, Sequence[str]]]
+BandQuery: TypeAlias = Optional[Union[str, Sequence[str]]]
 """One|All|Some bands"""
 
 ReaderSubsetSelection: TypeAlias = Any
@@ -449,7 +449,7 @@ class AuxDataSource:
         return self
 
 
-MultiBandSource = Mapping[str, RasterSource | AuxDataSource | None]
+MultiBandSource: TypeAlias = Mapping[str, RasterSource | AuxDataSource | None]
 """Mapping from band name on output to DataSource, raster or auxiliary."""
 
 
@@ -737,7 +737,7 @@ class ReaderDriver(Protocol):
     def aux_reader(self) -> AuxReader | None: ...
 
 
-ReaderDriverSpec = Union[str, ReaderDriver]
+ReaderDriverSpec: TypeAlias = Union[str, ReaderDriver]
 
 
 def is_reader_driver(x: Any) -> bool:
