@@ -608,7 +608,7 @@ def mk_dataset(
     crs_attrs = {}
     if gbox.crs is not None:
         crs_attrs["crs"] = str(gbox.crs)
-        crs_attrs["grid_mapping"] = crs_coord_name
+        crs_attrs["grid_mapping"] = str(crs_coord_name)
 
     def _alloc(shape: Tuple[int, ...], dtype: str, name: Hashable, ydim: int) -> Any:
         if alloc is not None:
