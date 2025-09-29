@@ -605,6 +605,11 @@ def mk_dataset(
         for coord in template.extra_coords
     }
 
+    crs_attrs = {}
+    if gbox.crs is not None:
+        crs_attrs["crs"] = str(gbox.crs)
+        crs_attrs["grid_mapping"] = crs_coord_name
+
     def _alloc(shape: Tuple[int, ...], dtype: str, name: Hashable, ydim: int) -> Any:
         if alloc is not None:
             return alloc(shape, dtype, name=name, ydim=ydim)
@@ -650,9 +655,11 @@ def mk_dataset(
             name=name,
             ydim=ydim + 1,  # +1 for time dimension
         )
-        attrs = {}
+
+        attrs = band.meta.attrs if band.meta is not None else {}
         if band.fill_value is not None:
             attrs["nodata"] = band.fill_value
+        attrs.update(crs_attrs)
 
         xx = xr.DataArray(data=data, coords=band_coords, dims=dims, attrs=attrs)
         xx.encoding.update(grid_mapping=crs_coord_name)
@@ -661,6 +668,7 @@ def mk_dataset(
     return xr.Dataset(
         {name: _maker(name, band) for name, band in bands.items()},
         coords=coords,
+        attrs=crs_attrs,
     )
 
 
