@@ -40,6 +40,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+        dask-version: ["dask<2025.01", "dask>=2025.01"]
       fail-fast: false
     defaults:
       run:
@@ -56,4 +57,4 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Run tests
-        run: uv run --python ${{ matrix.python-version }} pytest
+        run: uv run --python ${{ matrix.python-version }} --with "${{ matrix.dask-version }}" pytest
