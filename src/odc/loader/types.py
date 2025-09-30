@@ -174,6 +174,9 @@ class AuxBandMetadata:
     driver_data: Any = None
     """IO Driver specific extra data."""
 
+    attrs: dict[str, Any] = field(default_factory=dict)
+    """Additional auxilliary band attributes."""
+
     def _repr_json_(self) -> Dict[str, Any]:
         """
         Return a JSON serializable representation of the AuxBandMetadata object.
@@ -189,6 +192,7 @@ class AuxBandMetadata:
                 roundtrip=True,
                 on_error="SET, NOT JSON SERIALIZABLE",
             ),
+            "attrs": self.attrs,
         }
 
     @property
