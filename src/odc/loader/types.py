@@ -73,6 +73,9 @@ class RasterBandMetadata:
     driver_data: Any = None
     """IO Driver specific extra data."""
 
+    attrs: dict[str, Any] = field(default_factory=dict)
+    """Additional raster band attributes."""
+
     def with_defaults(self, defaults: "RasterBandMetadata") -> "RasterBandMetadata":
         """
         Merge with another metadata object, using self as the primary source.
@@ -85,6 +88,7 @@ class RasterBandMetadata:
             units=with_default(self.units, defaults.units, "1"),
             dims=with_default(self.dims, defaults.dims, ()),
             driver_data=with_default(self.driver_data, defaults.driver_data),
+            attrs=with_default(self.attrs, defaults.attrs),
         )
 
     def patch(self, **kwargs) -> "RasterBandMetadata":
@@ -111,6 +115,7 @@ class RasterBandMetadata:
                 roundtrip=True,
                 on_error="SET, NOT JSON SERIALIZABLE",
             ),
+            "attrs": self.attrs,
         }
 
     @property
@@ -169,6 +174,9 @@ class AuxBandMetadata:
     driver_data: Any = None
     """IO Driver specific extra data."""
 
+    attrs: dict[str, Any] = field(default_factory=dict)
+    """Additional auxilliary band attributes."""
+
     def _repr_json_(self) -> Dict[str, Any]:
         """
         Return a JSON serializable representation of the AuxBandMetadata object.
@@ -184,6 +192,7 @@ class AuxBandMetadata:
                 roundtrip=True,
                 on_error="SET, NOT JSON SERIALIZABLE",
             ),
+            "attrs": self.attrs,
         }
 
     @property
