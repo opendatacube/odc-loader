@@ -651,7 +651,7 @@ def mk_dataset(
             ydim=ydim + 1,  # +1 for time dimension
         )
 
-        attrs = band.meta.attrs if band.meta is not None else {}
+        attrs = {**band.meta.attrs} if band.meta is not None else {}
         if band.fill_value is not None:
             attrs["nodata"] = band.fill_value
 
