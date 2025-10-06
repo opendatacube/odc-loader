@@ -5,6 +5,7 @@ Tests for the in-memory reader driver
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime
 
 import numpy as np
@@ -215,6 +216,10 @@ def test_raster_group_md() -> None:
     assert rgm.extra_coords[0] == coord
 
 
+@pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="Zarr 3 does not currently support consolidated metadata",
+)
 def test_memreader_zarr(sample_ds: xr.Dataset) -> None:
     assert isinstance(sample_ds.odc, ODCExtensionDs)
     assert "xx" in sample_ds
