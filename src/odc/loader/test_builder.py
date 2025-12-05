@@ -42,7 +42,7 @@ _rlp = RasterLoadParams
 def _full_tyx_bins(
     tiles: GeoboxTiles, nsrcs=1, nt=1
 ) -> Dict[tuple[int, int, int], list[int]]:
-    return {idx: list(range(nsrcs)) for idx in np.ndindex((nt, *tiles.shape.yx))}  # type: ignore
+    return {idx: list(range(nsrcs)) for idx in np.ndindex((nt, *tiles.shape.yx))}
 
 
 def _num_chunks(chunk: int, sz: int) -> int:

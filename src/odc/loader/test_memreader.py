@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from importlib.metadata import version
 
 import numpy as np
 import pytest
@@ -16,6 +17,7 @@ from odc.geo.data import country_geom
 from odc.geo.gcp import GCPGeoBox
 from odc.geo.geobox import GeoBox, GeoboxTiles
 from odc.geo.xr import ODCExtensionDa, ODCExtensionDs, rasterize
+from packaging.version import parse as parse_version
 
 from odc.loader import chunked_load
 from odc.loader._zarr import (
@@ -221,6 +223,10 @@ def test_memreader_zarr(sample_ds: xr.Dataset) -> None:
 
     zarr = pytest.importorskip("zarr")
     assert zarr is not None
+    # FIXME: update test for Zarr v3, links to more information in:
+    # https://github.com/opendatacube/odc-loader/pull/29#issuecomment-3258611734
+    if parse_version(version("zarr")) > parse_version("2"):
+        pytest.skip("Consolidated metadata is located elsewhere for Zarr v3")
     _gbox = sample_ds.odc.geobox
     assert _gbox is not None
     gbox = _gbox.approx if isinstance(_gbox, GCPGeoBox) else _gbox
