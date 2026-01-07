@@ -40,6 +40,7 @@ from odc.geo.geobox import GeoBox, GeoBoxBase, GeoboxTiles
 from odc.geo.xr import xr_coords
 from packaging.version import Version
 
+from ._fuser import fuser_for_nodata
 from ._reader import (
     ReaderDaskAdaptor,
     nodata_mask,
@@ -60,7 +61,7 @@ from .types import (
     RasterSource,
     ReaderDriver,
     ReaderSubsetSelection,
-    T,
+    T, FuserFunc,
 )
 DaskBuilderMode: TypeAlias = Literal["mem", "concurrency"]
 
@@ -529,6 +530,7 @@ def fuse_nd_slices(
     dst: Any,
     ydim: int = 0,
     prefilled: bool = False,
+    fuser: FuserFunc | None = None,
 ) -> Any:
     postfix_roi = (slice(None),) * len(dst.shape[ydim + 2 :])
     prefix_roi = (slice(None),) * ydim
@@ -536,12 +538,14 @@ def fuse_nd_slices(
     if not prefilled:
         np.copyto(dst, fill_value)
 
+    if fuser is None:
+        fuser = fuser_for_nodata(prefilled)
+
     for yx_roi, pix in srcs:
         _roi: tuple[slice, ...] = prefix_roi + yx_roi + postfix_roi
         assert dst[_roi].shape == pix.shape
 
-        missing = nodata_mask(dst[_roi], fill_value)
-        np.copyto(dst[_roi], pix, where=missing)
+        fuser(dst[_roi], pix)
 
     return dst
 

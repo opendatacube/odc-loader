@@ -6,6 +6,7 @@ import json
 from dataclasses import astuple, dataclass, field, replace
 from typing import (
     Any,
+    Callable,
     ContextManager,
     Dict,
     Mapping,
@@ -40,6 +41,10 @@ GlobalLoadContext: TypeAlias = Any
 LocalLoadContext: TypeAlias = Any
 
 Band_DType: TypeAlias = Union[DTypeLike, Mapping[str, DTypeLike]]
+
+# Fuser functions are defined:
+#   def fuser(dst: np.ndarray, src: np.ndarray) -> None:
+FuserFunc: TypeAlias = Callable[[np.ndarray, np.ndarray], None]
 
 
 @dataclass(eq=True, frozen=True)
