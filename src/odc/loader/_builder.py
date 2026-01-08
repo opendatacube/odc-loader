@@ -563,8 +563,6 @@ def _fill_nd_slice(
     ydim: int = 0,
     selection: Any | None = None,
 ) -> Any:
-    # TODO: support masks not just nodata based fusing
-    #
     # ``nodata``     marks missing pixels, but it might be None (everything is valid)
     # ``fill_value`` is the initial value to use, it's equal to ``nodata`` when set,
     #                otherwise defaults to .nan for floats and 0 for integers
