@@ -87,7 +87,7 @@ rlp_fixtures = [
         {"a": _sn(dims=(*dims, "W"), shape=(*shape, 4))},
     ],
     [
-        # Y,X onlym with a custom fuser
+        # Y,X only, with a custom fuser
         {"a": _rlp("uint8", fuser_fqn="odc.loader.testing.utils.dummy_fuser")},
         None,
         None,

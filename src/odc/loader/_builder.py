@@ -43,7 +43,6 @@ from packaging.version import Version
 from ._fuser import fuser_for_nodata, resolve_fuser
 from ._reader import (
     ReaderDaskAdaptor,
-    nodata_mask,
     resolve_dst_fill_value,
     resolve_src_nodata,
 )
@@ -53,6 +52,7 @@ from .types import (
     AuxLoadParams,
     Band_DType,
     DaskRasterReader,
+    FuserFunc,
     GlobalLoadContext,
     MultiBandSource,
     RasterGroupMetadata,
@@ -61,7 +61,7 @@ from .types import (
     RasterSource,
     ReaderDriver,
     ReaderSubsetSelection,
-    T, FuserFunc,
+    T,
 )
 DaskBuilderMode: TypeAlias = Literal["mem", "concurrency"]
 
