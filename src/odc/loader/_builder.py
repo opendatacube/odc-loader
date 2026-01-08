@@ -40,7 +40,7 @@ from odc.geo.geobox import GeoBox, GeoBoxBase, GeoboxTiles
 from odc.geo.xr import xr_coords
 from packaging.version import Version
 
-from ._fuser import fuser_for_nodata
+from ._fuser import fuser_for_nodata, resolve_fuser
 from ._reader import (
     ReaderDaskAdaptor,
     nodata_mask,
@@ -441,6 +441,7 @@ class DaskGraphBuilder:
                     dtype,
                     fill_value,
                     ydim - 1,
+                    cfg.fuser_fqn,
                     _data_producer=True,
                 )
 
@@ -506,11 +507,14 @@ def _dask_fuser(
     dtype: DTypeLike,
     fill_value: float | int,
     src_ydim: int = 0,
+    fuser_fqn: str | None = None,
 ):
     assert shape[0] == len(srcs)
     assert len(shape) >= 3  # time, ..., y, x, ...
 
     dst = np.full(shape, fill_value, dtype=dtype)
+
+    fuser = resolve_fuser(fuser_fqn) if fuser_fqn is not None else None
 
     for ti, layer in enumerate(srcs):
         fuse_nd_slices(
@@ -519,6 +523,7 @@ def _dask_fuser(
             dst[ti],
             ydim=src_ydim,
             prefilled=True,
+            fuser=fuser,
         )
 
     return dst
@@ -573,6 +578,8 @@ def _fill_nd_slice(
     if len(srcs) == 0:
         return dst
 
+    fuser = resolve_fuser(cfg.fuser_fqn) if cfg.fuser_fqn is not None else None
+
     src, *rest = srcs
     yx_roi, pix = src.read(cfg, dst_gbox, dst=dst, selection=selection)
     assert len(yx_roi) == 2
@@ -584,6 +591,7 @@ def _fill_nd_slice(
         dst,
         ydim=ydim,
         prefilled=True,
+        fuser=fuser,
     )
 
 

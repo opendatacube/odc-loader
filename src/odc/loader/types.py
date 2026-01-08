@@ -517,6 +517,9 @@ class RasterLoadParams:
     meta: Optional[RasterBandMetadata] = None
     """Expected raster band metadata."""
 
+    fuser_fqn: Optional[str] = None
+    """Fully qualified name of custom fuser function to use for this band."""
+
     def patch(self, **kwargs) -> "RasterLoadParams":
         """
         Return a new object with updated fields.
@@ -574,6 +577,7 @@ class RasterLoadParams:
             "fail_on_error": self.fail_on_error,
             "dims": list(self.dims),
             "meta": self.meta._repr_json_() if self.meta is not None else None,
+            "fuser_fqn": self.fuser_fqn,
         }
 
 
