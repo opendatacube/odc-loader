@@ -40,9 +40,9 @@ from odc.geo.geobox import GeoBox, GeoBoxBase, GeoboxTiles
 from odc.geo.xr import xr_coords
 from packaging.version import Version
 
+from ._fuser import fuser_for_nodata, resolve_fuser
 from ._reader import (
     ReaderDaskAdaptor,
-    nodata_mask,
     resolve_dst_fill_value,
     resolve_src_nodata,
 )
@@ -52,6 +52,7 @@ from .types import (
     AuxLoadParams,
     Band_DType,
     DaskRasterReader,
+    FuserFunc,
     GlobalLoadContext,
     MultiBandSource,
     RasterGroupMetadata,
@@ -440,6 +441,7 @@ class DaskGraphBuilder:
                     dtype,
                     fill_value,
                     ydim - 1,
+                    cfg.fuser_fqn,
                     _data_producer=True,
                 )
 
@@ -505,11 +507,14 @@ def _dask_fuser(
     dtype: DTypeLike,
     fill_value: float | int,
     src_ydim: int = 0,
+    fuser_fqn: str | None = None,
 ):
     assert shape[0] == len(srcs)
     assert len(shape) >= 3  # time, ..., y, x, ...
 
     dst = np.full(shape, fill_value, dtype=dtype)
+
+    fuser = resolve_fuser(fuser_fqn) if fuser_fqn is not None else None
 
     for ti, layer in enumerate(srcs):
         fuse_nd_slices(
@@ -518,6 +523,7 @@ def _dask_fuser(
             dst[ti],
             ydim=src_ydim,
             prefilled=True,
+            fuser=fuser,
         )
 
     return dst
@@ -529,6 +535,7 @@ def fuse_nd_slices(
     dst: Any,
     ydim: int = 0,
     prefilled: bool = False,
+    fuser: FuserFunc | None = None,
 ) -> Any:
     postfix_roi = (slice(None),) * len(dst.shape[ydim + 2 :])
     prefix_roi = (slice(None),) * ydim
@@ -536,12 +543,14 @@ def fuse_nd_slices(
     if not prefilled:
         np.copyto(dst, fill_value)
 
+    if fuser is None:
+        fuser = fuser_for_nodata(prefilled)
+
     for yx_roi, pix in srcs:
         _roi: tuple[slice, ...] = prefix_roi + yx_roi + postfix_roi
         assert dst[_roi].shape == pix.shape
 
-        missing = nodata_mask(dst[_roi], fill_value)
-        np.copyto(dst[_roi], pix, where=missing)
+        fuser(dst[_roi], pix)
 
     return dst
 
@@ -554,8 +563,6 @@ def _fill_nd_slice(
     ydim: int = 0,
     selection: Any | None = None,
 ) -> Any:
-    # TODO: support masks not just nodata based fusing
-    #
     # ``nodata``     marks missing pixels, but it might be None (everything is valid)
     # ``fill_value`` is the initial value to use, it's equal to ``nodata`` when set,
     #                otherwise defaults to .nan for floats and 0 for integers
@@ -569,6 +576,8 @@ def _fill_nd_slice(
     if len(srcs) == 0:
         return dst
 
+    fuser = resolve_fuser(cfg.fuser_fqn) if cfg.fuser_fqn is not None else None
+
     src, *rest = srcs
     yx_roi, pix = src.read(cfg, dst_gbox, dst=dst, selection=selection)
     assert len(yx_roi) == 2
@@ -580,6 +589,7 @@ def _fill_nd_slice(
         dst,
         ydim=ydim,
         prefilled=True,
+        fuser=fuser,
     )
 
 
