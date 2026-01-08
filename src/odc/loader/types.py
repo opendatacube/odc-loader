@@ -10,13 +10,11 @@ from typing import (
     ContextManager,
     Dict,
     Mapping,
-    Optional,
     Protocol,
     Sequence,
     Tuple,
     TypeAlias,
     TypeVar,
-    Union,
 )
 
 import numpy as np
@@ -30,17 +28,17 @@ T = TypeVar("T")
 BandKey: TypeAlias = Tuple[str, int]
 """Asset Name, band index within an asset (1 based, 0 indicates "all the bands")."""
 
-BandIdentifier: TypeAlias = Union[str, BandKey]
+BandIdentifier: TypeAlias = str | BandKey
 """Alias or canonical band identifier."""
 
-BandQuery: TypeAlias = Optional[Union[str, Sequence[str]]]
+BandQuery: TypeAlias = str | Sequence[str] | None
 """One|All|Some bands"""
 
 ReaderSubsetSelection: TypeAlias = Any
 GlobalLoadContext: TypeAlias = Any
 LocalLoadContext: TypeAlias = Any
 
-Band_DType: TypeAlias = Union[DTypeLike, Mapping[str, DTypeLike]]
+Band_DType: TypeAlias = DTypeLike | Mapping[str, DTypeLike]
 
 # Fuser functions are defined:
 #   def fuser(dst: np.ndarray, src: np.ndarray) -> None:
@@ -60,10 +58,10 @@ class RasterBandMetadata:
     from the config.
     """
 
-    data_type: Optional[str] = None
+    data_type: str | None = None
     """Numpy compatible dtype string."""
 
-    nodata: Optional[float] = None
+    nodata: float | None = None
     """Nodata marker/fill_value."""
 
     units: str = "1"
@@ -161,10 +159,10 @@ class AuxBandMetadata:
     Metadata for an auxiliary band.
     """
 
-    data_type: Optional[str] = None
+    data_type: str | None = None
     """Numpy compatible dtype string."""
 
-    nodata: Optional[float] = None
+    nodata: float | None = None
     """Nodata marker/fill_value."""
 
     units: str = "1"
@@ -357,13 +355,13 @@ class RasterSource:
     band: int = 1
     """One based band index (default=1)."""
 
-    subdataset: Optional[str] = None
+    subdataset: str | None = None
     """Used for netcdf/hdf5 sources."""
 
-    geobox: Optional[GeoBoxBase] = None
+    geobox: GeoBoxBase | None = None
     """Data footprint/shape/projection if known."""
 
-    meta: Optional[RasterBandMetadata] = None
+    meta: RasterBandMetadata | None = None
     """Expected raster dtype/nodata."""
 
     driver_data: Any = None
@@ -441,10 +439,10 @@ class AuxDataSource:
     uri: str
     """Asset location."""
 
-    subdataset: Optional[str] = None
+    subdataset: str | None = None
     """Used for netcdf/hdf5 sources."""
 
-    meta: Optional[AuxBandMetadata] = None
+    meta: AuxBandMetadata | None = None
     """Expected raster dtype/nodata."""
 
     driver_data: Any = None
@@ -475,13 +473,13 @@ class RasterLoadParams:
 
     # pylint: disable=too-many-instance-attributes
 
-    dtype: Optional[str] = None
+    dtype: str | None = None
     """Output dtype, default same as source."""
 
-    fill_value: Optional[float] = None
+    fill_value: float | None = None
     """Value to use for missing pixels."""
 
-    src_nodata_fallback: Optional[float] = None
+    src_nodata_fallback: float | None = None
     """
     Fallback ``nodata`` marker for source.
 
@@ -489,7 +487,7 @@ class RasterLoadParams:
     ``src_nodata_fallback`` is set then treat source pixels with that value as missing.
     """
 
-    src_nodata_override: Optional[float] = None
+    src_nodata_override: float | None = None
     """
     Override ``nodata`` marker for source.
 
@@ -514,10 +512,10 @@ class RasterLoadParams:
     dims: Tuple[str, ...] = ()
     """Dimension names for this band."""
 
-    meta: Optional[RasterBandMetadata] = None
+    meta: RasterBandMetadata | None = None
     """Expected raster band metadata."""
 
-    fuser_fqn: Optional[str] = None
+    fuser_fqn: str | None = None
     """Fully qualified name of custom fuser function to use for this band."""
 
     def patch(self, **kwargs) -> "RasterLoadParams":
@@ -539,7 +537,7 @@ class RasterLoadParams:
         return _extra_dims(self.dims)
 
     @staticmethod
-    def same_as(src: Union[RasterBandMetadata, RasterSource]) -> "RasterLoadParams":
+    def same_as(src: RasterBandMetadata | RasterSource) -> "RasterLoadParams":
         """Construct from source object."""
         if isinstance(src, RasterBandMetadata):
             meta = src
@@ -551,7 +549,7 @@ class RasterLoadParams:
             dtype = "float32"
 
         return RasterLoadParams(
-            dtype=dtype, fill_value=meta.nodata, dims=meta.dims, meta=meta
+            dtype=dtype, fill_value=meta.nodata, dims=meta.dims, meta=meta,
         )
 
     @property
@@ -587,13 +585,13 @@ class AuxLoadParams:
     Captures data loading configuration for auxiliary bands.
     """
 
-    dtype: Optional[str] = None
+    dtype: str | None = None
     """Output dtype, default same as source."""
 
-    fill_value: Optional[float] = None
+    fill_value: float | None = None
     """Value used in-place of missing data."""
 
-    meta: Optional[AuxBandMetadata] = None
+    meta: AuxBandMetadata | None = None
     """Expected auxiliary band metadata."""
 
     def patch(self, **kwargs) -> "AuxLoadParams":
@@ -603,7 +601,7 @@ class AuxLoadParams:
         return replace(self, **kwargs)
 
     @staticmethod
-    def same_as(src: Union[AuxBandMetadata, AuxDataSource]) -> "AuxLoadParams":
+    def same_as(src: AuxBandMetadata | AuxDataSource) -> "AuxLoadParams":
         """Construct from source object."""
         if isinstance(src, AuxBandMetadata):
             meta = src
@@ -657,8 +655,8 @@ class RasterReader(Protocol):
         cfg: RasterLoadParams,
         dst_geobox: GeoBox,
         *,
-        dst: Optional[np.ndarray] = None,
-        selection: Optional[ReaderSubsetSelection] = None,
+        dst: np.ndarray | None = None,
+        selection: ReaderSubsetSelection | None = None,
     ) -> tuple[tuple[slice, slice], np.ndarray]: ...
 
 
@@ -679,7 +677,7 @@ class DaskRasterReader(Protocol):
         self,
         dst_geobox: GeoBox,
         *,
-        selection: Optional[ReaderSubsetSelection] = None,
+        selection: ReaderSubsetSelection | None = None,
         idx: tuple[int, ...],
     ) -> Any: ...
 
@@ -755,7 +753,7 @@ class ReaderDriver(Protocol):
     def aux_reader(self) -> AuxReader | None: ...
 
 
-ReaderDriverSpec: TypeAlias = Union[str, ReaderDriver]
+ReaderDriverSpec: TypeAlias = str | ReaderDriver
 
 
 def is_reader_driver(x: Any) -> bool:
@@ -769,7 +767,7 @@ def is_reader_driver(x: Any) -> bool:
 BAND_DEFAULTS = RasterBandMetadata("float32", None, "1")
 
 
-def with_default(v: Optional[T], default_value: T, *other_defaults) -> T:
+def with_default(v: T | None, default_value: T, *other_defaults) -> T:
     """
     Replace ``None`` with default value.
 
@@ -784,7 +782,7 @@ def with_default(v: Optional[T], default_value: T, *other_defaults) -> T:
     return v
 
 
-def norm_nodata(nodata) -> Union[float, None]:
+def norm_nodata(nodata) -> float | None:
     if nodata is None:
         return None
     if isinstance(nodata, (int, float)):
@@ -793,7 +791,7 @@ def norm_nodata(nodata) -> Union[float, None]:
 
 
 def norm_band_metadata(
-    v: Union[RasterBandMetadata, Mapping[str, Any]],
+    v: RasterBandMetadata | Mapping[str, Any],
     fallback: RasterBandMetadata = BAND_DEFAULTS,
 ) -> RasterBandMetadata:
     if isinstance(v, RasterBandMetadata):
