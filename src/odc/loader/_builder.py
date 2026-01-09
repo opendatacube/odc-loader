@@ -544,7 +544,7 @@ def fuse_nd_slices(
         np.copyto(dst, fill_value)
 
     if fuser is None:
-        fuser = fuser_for_nodata(prefilled)
+        fuser = fuser_for_nodata(fill_value)
 
     for yx_roi, pix in srcs:
         _roi: tuple[slice, ...] = prefix_roi + yx_roi + postfix_roi
