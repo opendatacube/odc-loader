@@ -107,7 +107,7 @@ def check_xx(
     for name, dv in xx.data_vars.items():
         assert isinstance(dv.data, (np.ndarray, da.Array))
         assert name in bands
-        assert dv.dtype == bands[name].dtype
+        assert dv.dtype == bands[name].dtype  # type: ignore[index]
 
     assert set(xx.data_vars) == set(bands)
 
