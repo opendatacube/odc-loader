@@ -547,6 +547,8 @@ def fuse_nd_slices(
         fuser = fuser_for_nodata(fill_value)
 
     for yx_roi, pix in srcs:
+        assert len(yx_roi) == 2
+        assert pix.ndim == dst.ndim
         _roi: tuple[slice, ...] = prefix_roi + yx_roi + postfix_roi
         assert dst[_roi].shape == pix.shape
 
@@ -578,13 +580,8 @@ def _fill_nd_slice(
 
     fuser = resolve_fuser(cfg.fuser_fqn) if cfg.fuser_fqn is not None else None
 
-    src, *rest = srcs
-    yx_roi, pix = src.read(cfg, dst_gbox, dst=dst, selection=selection)
-    assert len(yx_roi) == 2
-    assert pix.ndim == dst.ndim
-
     return fuse_nd_slices(
-        (src.read(cfg, dst_gbox, selection=selection) for src in rest),
+        (src.read(cfg, dst_gbox, selection=selection) for src in srcs),
         fill_value,
         dst,
         ydim=ydim,
