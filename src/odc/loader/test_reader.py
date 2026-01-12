@@ -221,7 +221,7 @@ def test_rio_read() -> None:
         assert (pix == _cfg.fill_value).any()
         assert (pix != _cfg.src_nodata_fallback).all()
         assert_array_equal(expect, pix)
-        assert ma.masked_equal(pix, _cfg.fill_value).sum() == xx.values.sum()
+        assert ma.masked_equal(pix, _cfg.fill_value).sum() == xx.values.sum()  # type: ignore[arg-type]
 
     # smaller src than dst
     # float32 with nan
