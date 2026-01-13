@@ -122,6 +122,7 @@ def resolve_load_cfg(
     use_overviews: bool = True,
     nodata: float | None = None,
     fail_on_error: bool = True,
+    fuse_func: str | Mapping[str, str | None] | None = None,
 ) -> dict[str, RasterLoadParams | AuxLoadParams]:
     """
     Combine band metadata with user provided settings to produce load configuration.
@@ -151,6 +152,11 @@ def resolve_load_cfg(
             return nodata
         return band.nodata
 
+    def _fuser(name: str, fuse_func: str | Mapping[str, str | None] | None) -> str | None:
+        if isinstance(fuse_func, Mapping):
+            return fuse_func.get(name, fuse_func.get("*", None))
+        return fuse_func
+
     def _resolve(
         name: str, meta: RasterBandMetadata | AuxBandMetadata
     ) -> RasterLoadParams | AuxLoadParams:
@@ -169,6 +175,7 @@ def resolve_load_cfg(
             fail_on_error=fail_on_error,
             dims=meta.dims,
             meta=meta,
+            fuser_fqn=_fuser(name, fuse_func)
         )
 
     return {name: _resolve(name, meta) for name, meta in bands.items()}
