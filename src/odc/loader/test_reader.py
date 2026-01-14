@@ -417,12 +417,16 @@ def test_resolve_load_cfg() -> None:
         {
             "band": RasterBandMetadata("uint8", 255),
             "bb": RasterBandMetadata(),
+            "bc": RasterBandMetadata("uint8", 1),
             "aux": AuxBandMetadata("int16", -1),
         },
         resampling={"band": "bilinear", "*": "mode"},
+        fuse_func={"band": "a.b.c.fuser", "bb": None, "*": "d.e.f.fuser"},
     )
     assert "band" in cfg
     assert "aux" in cfg
+    assert "bb" in cfg
+    assert "bc" in cfg
 
     c = cfg["band"]
     assert isinstance(c, RasterLoadParams)
@@ -433,6 +437,7 @@ def test_resolve_load_cfg() -> None:
     assert c.src_nodata_fallback is None
     assert c.src_nodata_override is None
     assert c.fail_on_error is True
+    assert c.fuser_fqn == "a.b.c.fuser"
 
     c = cfg["bb"]
     assert isinstance(c, RasterLoadParams)
@@ -443,6 +448,18 @@ def test_resolve_load_cfg() -> None:
     assert c.src_nodata_fallback is None
     assert c.src_nodata_override is None
     assert c.fail_on_error is True
+    assert c.fuser_fqn is None
+
+    c = cfg["bc"]
+    assert isinstance(c, RasterLoadParams)
+    assert c.dtype == "uint8"
+    assert c.dims == ()
+    assert c.resampling == "mode"
+    assert c.fill_value == 1
+    assert c.src_nodata_fallback is None
+    assert c.src_nodata_override is None
+    assert c.fail_on_error is True
+    assert c.fuser_fqn == "d.e.f.fuser"
 
     c = cfg["aux"]
     assert isinstance(c, AuxLoadParams)
