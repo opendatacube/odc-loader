@@ -478,3 +478,85 @@ def test_rio_driver_init() -> None:
     assert driver.md_parser is a
     assert driver.aux_reader is b
     assert driver.dask_reader is c
+
+
+def test_src_nodata_fallback_fuse_adjacent_scenes() -> None:
+    """
+    When two scenes are warped to a different CRS and fused, fill pixels
+    (matching the nodata value) from one scene must not block real data
+    from the other scene in the overlap zone.
+
+    This requires src_nodata_fallback to be set so that rasterio.warp.reproject
+    knows to treat the fill value as nodata in the source, even when the
+    GeoTIFF file itself has no nodata tag.
+
+    Regression test for https://github.com/opendatacube/odc-stac/issues/259
+    """
+    from ._fuser import fuser_for_nodata
+
+    FILL = 1
+    DATA_A = 100
+    DATA_B = 200
+
+    # Two overlapping source scenes in EPSG:32630 (UTM 30N)
+    gbox_a = GeoBox.from_bbox(
+        (166000, 0, 566000, 500000), crs="EPSG:32630", resolution=10000
+    )
+    gbox_b = GeoBox.from_bbox(
+        (366000, 0, 834000, 500000), crs="EPSG:32630", resolution=10000
+    )
+
+    # Destination in EPSG:4326 to force the reproject codepath
+    a_4326 = gbox_a.extent.to_crs("EPSG:4326").boundingbox
+    b_4326 = gbox_b.extent.to_crs("EPSG:4326").boundingbox
+    dst_gbox = GeoBox.from_bbox(
+        (
+            min(a_4326.left, b_4326.left),
+            min(a_4326.bottom, b_4326.bottom),
+            max(a_4326.right, b_4326.right),
+            max(a_4326.top, b_4326.top),
+        ),
+        crs="EPSG:4326",
+        resolution=0.1,
+    )
+
+    # Scene A: real data, except fill on the right (the overlap zone)
+    src_a = xr_zeros(gbox_a, dtype="uint16")
+    src_a.values[:] = DATA_A
+    src_a.values[:, 28:] = FILL
+
+    # Scene B: fill on the left (overlap zone), real data on the right
+    src_b = xr_zeros(gbox_b, dtype="uint16")
+    src_b.values[:] = DATA_B
+    src_b.values[:, :15] = FILL
+
+    # Use resolve_load_cfg with band metadata that has nodata set (as STAC
+    # raster:bands would provide). This exercises the fix: resolve_load_cfg
+    # now sets src_nodata_fallback from meta.nodata so rasterio.warp.reproject
+    # knows to treat fill pixels as nodata in the source.
+    band_meta = RasterBandMetadata(data_type="uint16", nodata=FILL)
+    load_cfg = resolve_load_cfg({"qa_pixel": band_meta})
+    cfg = load_cfg["qa_pixel"]
+    assert cfg.fill_value == FILL
+    assert cfg.src_nodata_fallback == FILL
+
+    mosaic = np.full(dst_gbox.shape, FILL, dtype="uint16")
+    fuser = fuser_for_nodata(FILL)
+
+    for src_data in [src_a, src_b]:
+        with with_temp_tiff(src_data, compress=None, overview_levels=[]) as uri:
+            src = RasterSource(uri)
+            roi, pix = rio_read(src, cfg, dst_gbox)
+            if pix.size > 0:
+                fuser(mosaic[roi], pix)
+
+    data_a_count = int((mosaic == DATA_A).sum())
+    data_b_count = int((mosaic == DATA_B).sum())
+
+    # Both scenes contribute their real data to the mosaic
+    assert data_a_count > 0, "Scene A data should be present"
+    assert data_b_count > 0, "Scene B data should be present"
+
+    # No spurious zeros: src_nodata_fallback ensures reproject uses FILL as
+    # both src and dst nodata, so outside-of-source regions get FILL not 0
+    assert int((mosaic == 0).sum()) == 0, "No zeros should appear in the mosaic"

@@ -170,7 +170,7 @@ def resolve_load_cfg(
         return RasterLoadParams(
             _dtype(name, meta.data_type, "float32"),
             fill_value=_fill_value(meta),
-            src_nodata_fallback=_fill_value(meta),
+            src_nodata_fallback=meta.nodata,
             use_overviews=use_overviews,
             resampling=_resampling(name, "nearest"),
             fail_on_error=fail_on_error,
