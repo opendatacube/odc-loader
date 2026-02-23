@@ -537,6 +537,7 @@ def test_src_nodata_fallback_fuse_adjacent_scenes() -> None:
     band_meta = RasterBandMetadata(data_type="uint16", nodata=FILL)
     load_cfg = resolve_load_cfg({"qa_pixel": band_meta})
     cfg = load_cfg["qa_pixel"]
+    assert isinstance(cfg, RasterLoadParams)
     assert cfg.fill_value == FILL
     assert cfg.src_nodata_fallback == FILL
 
