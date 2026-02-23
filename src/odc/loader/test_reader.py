@@ -434,7 +434,7 @@ def test_resolve_load_cfg() -> None:
     assert c.dims == ()
     assert c.resampling == "bilinear"
     assert c.fill_value == 255
-    assert c.src_nodata_fallback is None
+    assert c.src_nodata_fallback == 255
     assert c.src_nodata_override is None
     assert c.fail_on_error is True
     assert c.fuser_fqn == "a.b.c.fuser"
@@ -456,7 +456,7 @@ def test_resolve_load_cfg() -> None:
     assert c.dims == ()
     assert c.resampling == "mode"
     assert c.fill_value == 1
-    assert c.src_nodata_fallback is None
+    assert c.src_nodata_fallback == 1
     assert c.src_nodata_override is None
     assert c.fail_on_error is True
     assert c.fuser_fqn == "d.e.f.fuser"
