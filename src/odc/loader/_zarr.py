@@ -478,8 +478,8 @@ def raster_group_md(
     bands.update({(str(k), 1): band_info(v) for k, v in src.data_vars.items()})
 
     edims = {**base.extra_dims}
-    aliases: dict[str, list[BandKey]] = {**base.aliases}
-    extra_coords: list[FixedCoord] = list(base.extra_coords)
+    aliases = {**base.aliases}
+    extra_coords = list(base.extra_coords)
     supplied_coords = set(coord.name for coord in extra_coords)
 
     for coord_name in _raster_band_coords(src):
