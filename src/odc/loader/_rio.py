@@ -252,7 +252,7 @@ class ThreadSession(threading.local):
         if rasterio.env.hasenv():
             rasterio.env.delenv()
 
-    def session(self, session: Union[Dict[str, Any], Session] = None) -> Session:
+    def session(self, session: Union[Dict[str, Any], Session, None] = None) -> Session:
         if self._session is None:
             # first call in this thread
             # 1. Start GDAL environment
