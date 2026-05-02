@@ -120,6 +120,7 @@ aws_secret_access_key = fake-fake-fake
     monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(pp / "credentials"))
 
     aws, creds = get_aws_settings()
+    assert creds is not None
     assert aws["region_name"] == "us-west-2"
     assert aws["aws_access_key_id"] == "AKIAWYXYXYXYXYXYXYXY"
     assert aws["aws_secret_access_key"] == "fake-fake-fake"
