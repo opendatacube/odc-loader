@@ -152,7 +152,9 @@ def resolve_load_cfg(
             return nodata
         return band.nodata
 
-    def _fuser(name: str, fuse_func: str | Mapping[str, str | None] | None) -> str | None:
+    def _fuser(
+        name: str, fuse_func: str | Mapping[str, str | None] | None
+    ) -> str | None:
         if isinstance(fuse_func, Mapping):
             return fuse_func.get(name, fuse_func.get("*", None))
         return fuse_func
@@ -175,7 +177,7 @@ def resolve_load_cfg(
             fail_on_error=fail_on_error,
             dims=meta.dims,
             meta=meta,
-            fuser_fqn=_fuser(name, fuse_func)
+            fuser_fqn=_fuser(name, fuse_func),
         )
 
     return {name: _resolve(name, meta) for name, meta in bands.items()}
