@@ -11,6 +11,7 @@ import shutil
 import tempfile
 from collections import abc
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Generator, Iterator, Optional
 
 import numpy as np
@@ -48,7 +49,7 @@ def with_temp_tiff(data: xr.DataArray, **cog_opts) -> Generator[str, None, None]
         yield mem.name
 
 
-def write_files(file_dict):
+def write_files(file_dict) -> Path:
     """
     Convenience method for writing a bunch of files to a temporary directory.
 
@@ -71,7 +72,7 @@ def write_files(file_dict):
     return pathlib.Path(containing_dir)
 
 
-def _write_files_to_dir(directory_path, file_dict):
+def _write_files_to_dir(directory_path: str, file_dict) -> None:
     """
     Convenience method for writing a bunch of files to a given directory.
     """

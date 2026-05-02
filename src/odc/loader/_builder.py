@@ -486,7 +486,7 @@ def _dask_loader_tyx(
     env: Dict[str, Any],
     load_state: GlobalLoadContext,
     selection: Any | None = None,
-):
+) -> np.ndarray[tuple[int, ...]]:
     assert cfg.dtype is not None
     gbox = cast(GeoBox, gbt[iyx])
     chunk = np.empty(
@@ -509,7 +509,7 @@ def _dask_fuser(
     fill_value: float | int,
     src_ydim: int = 0,
     fuser_fqn: str | None = None,
-):
+) -> np.ndarray[tuple[int, ...]]:
     assert shape[0] == len(srcs)
     assert len(shape) >= 3  # time, ..., y, x, ...
 

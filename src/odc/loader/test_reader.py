@@ -51,7 +51,7 @@ def test_same_nodata() -> None:
 
 
 def test_resolve_nodata() -> None:
-    def _cfg(**kw):
+    def _cfg(**kw) -> RasterLoadParams:
         return RasterLoadParams("uint8", **kw)
 
     assert resolve_src_nodata(None, _cfg()) is None

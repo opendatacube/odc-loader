@@ -32,16 +32,16 @@ def without_aws_env(monkeypatch):
     yield
 
 
-def patch_aws(func, *args, **kw):
+def patch_aws(func: str, *args, **kw):
     assert __package__ is not None
     return mock.patch(__package__ + "._aws." + func, *args, **kw)
 
 
-def _json(**kw):
+def _json(**kw) -> str:
     return json.dumps(kw)
 
 
-def mock_urlopen(text, code=200):
+def mock_urlopen(text: str, code: int = 200) -> mock.MagicMock:
     m = mock.MagicMock()
     m.getcode.return_value = code
     m.read.return_value = text.encode("utf8")
