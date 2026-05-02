@@ -163,7 +163,7 @@ def get_aws_settings(
     region_name: str = "auto",
     aws_unsigned: Optional[bool] = None,
     requester_pays: bool = False,
-) -> Tuple[Dict[str, Any], Credentials]:
+) -> Tuple[Dict[str, Any], Credentials | None]:
     """
     Compute ``aws=`` parameter for ``set_default_rio_config``.
 
