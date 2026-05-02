@@ -6,7 +6,7 @@ from ._dask import tokenize_stream
 
 
 def test_tokenize_odc_geo():
-    gbox = GeoBox.from_bbox([0, 0, 1, 1], shape=(100, 100))
+    gbox = GeoBox.from_bbox((0, 0, 1, 1), shape=(100, 100))
     assert tokenize(gbox) == tokenize(gbox)
     assert tokenize(gbox) != tokenize(gbox.pad(1))
 
