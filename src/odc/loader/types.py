@@ -395,7 +395,7 @@ class RasterSource:
             return 0
         return self.meta.ydim
 
-    def __dask_tokenize__(self):
+    def __dask_tokenize__(self) -> tuple[str, int, str | None]:
         return (self.uri, self.band, self.subdataset)
 
     def _repr_json_(self) -> Dict[str, Any]:
@@ -782,7 +782,7 @@ def with_default(v: T | None, default_value: T, *other_defaults) -> T:
     return v
 
 
-def norm_nodata(nodata) -> float | None:
+def norm_nodata(nodata: str | int | float | None) -> float | None:
     if nodata is None:
         return None
     if isinstance(nodata, (int, float)):
@@ -849,7 +849,7 @@ def _jsonify_float(nodata: float) -> float | str:
 
 
 def _maybe_json(
-    obj,
+    obj: float | str | None,
     *,
     on_error=Unset(),
     allow_nan: bool = False,

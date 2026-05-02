@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import threading
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Union
 
 import numpy as np
 import rasterio
@@ -23,6 +23,7 @@ from odc.geo.geobox import GeoBox
 from odc.geo.overlap import ReprojectInfo, compute_reproject_roi
 from odc.geo.roi import roi_is_empty, roi_shape, w_
 from odc.geo.warp import resampling_s2rio
+from rasterio.env import Env
 from rasterio.session import AWSSession, Session
 
 from ._reader import (
@@ -42,6 +43,9 @@ from .types import (
     RasterSource,
     ReaderSubsetSelection,
 )
+
+if TYPE_CHECKING:
+    from botocore.credentials import Credentials
 
 log = logging.getLogger(__name__)
 
@@ -285,7 +289,9 @@ class ThreadSession(threading.local):
 _local = ThreadSession()
 
 
-def _sanitize(opts, keys):
+def _sanitize(
+    opts, keys: tuple[str, str, str, str, str, str, str, str, str, str, str, str, str]
+):
     return {k: (v if k not in keys else "xx..xx") for k, v in opts.items()}
 
 
@@ -309,7 +315,7 @@ def get_rio_env(sanitize: bool = True, no_session_keys: bool = False) -> Dict[st
     return opts
 
 
-def rio_env(session=None, **kw):
+def rio_env(session=None, **kw) -> Env:
     """
     Wraps rasterio.env.Env.
 
@@ -375,7 +381,7 @@ def configure_s3_access(
     requester_pays: bool = False,
     cloud_defaults: bool = True,
     **gdal_opts,
-):
+) -> Credentials | None:
     """
     Credentialize for S3 bucket access or configure public access.
 

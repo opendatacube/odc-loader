@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 import xarray as xr
 from odc.geo.geobox import GeoBox, GeoboxTiles
+from xarray.core.dataset import Dataset
 
 from . import chunked_load
 from ._builder import (
@@ -97,7 +98,7 @@ rlp_fixtures = [
 
 
 def check_xx(
-    xx,
+    xx: Dataset,
     bands: Dict[str, RasterLoadParams],
     extra_coords: Sequence[FixedCoord] | None,
     extra_dims: Mapping[str, int] | None,

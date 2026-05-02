@@ -1,11 +1,14 @@
 # pylint: disable=missing-function-docstring, missing-module-docstring
+from collections.abc import Hashable
+from typing import Any
+
 from dask.base import tokenize
 from odc.geo.geobox import CRS, GeoBox, GeoboxTiles
 
 from ._dask import tokenize_stream
 
 
-def test_tokenize_odc_geo():
+def test_tokenize_odc_geo() -> None:
     gbox = GeoBox.from_bbox((0, 0, 1, 1), shape=(100, 100))
     assert tokenize(gbox) == tokenize(gbox)
     assert tokenize(gbox) != tokenize(gbox.pad(1))
@@ -24,7 +27,7 @@ def test_tokenize_odc_geo():
     assert tokenize(CRS("epsg:4326")) != tokenize(CRS("EPSG:3857"))
 
 
-def test_tokenize_stream():
+def test_tokenize_stream() -> None:
     dd = [1, 2, "", 2]
     kx = list(tokenize_stream(dd))
     assert kx == [(tokenize(d), d) for d in dd]
@@ -32,7 +35,7 @@ def test_tokenize_stream():
     kx = list(tokenize_stream(dd, lambda k: (k, "d")))
     assert kx == [((tokenize(d), "d"), d) for d in dd]
 
-    dsk = {}
+    dsk: dict[Hashable, Any] = {}
     kx = list(tokenize_stream(dd, None, dsk))
     assert len(dsk) == len(set(dd))
 
