@@ -33,6 +33,7 @@ def without_aws_env(monkeypatch):
 
 
 def patch_aws(func, *args, **kw):
+    assert __package__ is not None
     return mock.patch(__package__ + "._aws." + func, *args, **kw)
 
 
