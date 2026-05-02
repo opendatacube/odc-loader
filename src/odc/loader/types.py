@@ -549,7 +549,7 @@ class RasterLoadParams:
             dtype = "float32"
 
         return RasterLoadParams(
-            dtype=dtype, fill_value=meta.nodata, dims=meta.dims, meta=meta,
+            dtype=dtype, fill_value=meta.nodata, dims=meta.dims, meta=meta
         )
 
     @property

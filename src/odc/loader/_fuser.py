@@ -1,7 +1,9 @@
 """Default fuser function and fuser utils"""
-import numpy as np
+
 from importlib import import_module
 from typing import cast
+
+import numpy as np
 
 from ._reader import nodata_mask
 from .types import FuserFunc
@@ -15,9 +17,12 @@ def nodata_fuser(dst: np.ndarray, src: np.ndarray, nodata: int | float) -> None:
 
 def fuser_for_nodata(nodata: int | float) -> FuserFunc:
     """Create a nodata fuser function for a particular nodata value"""
+
     def out(dst: np.ndarray, src: np.ndarray) -> None:
         nodata_fuser(dst, src, nodata)
+
     return out
+
 
 def resolve_fuser(fqn: str) -> FuserFunc:
     """Resolve a fuser function from fully qualified function name"""

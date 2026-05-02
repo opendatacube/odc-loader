@@ -2,11 +2,11 @@
 Various Dask helpers.
 """
 
+from collections.abc import Generator, Iterable
 from typing import (
     Any,
     Callable,
     Hashable,
-    Iterator,
     MutableMapping,
     Optional,
     Tuple,
@@ -19,10 +19,10 @@ T = TypeVar("T")
 
 
 def tokenize_stream(
-    xx: Iterator[T],
+    xx: Iterable[T],
     key: Optional[Callable[[str], Hashable]] = None,
     dsk: Optional[MutableMapping[Hashable, Any]] = None,
-) -> Iterator[Tuple[Hashable, T]]:
+) -> Generator[Tuple[Hashable, T]]:
     if key:
         kx = ((key(tokenize(x)), x) for x in xx)
     else:
