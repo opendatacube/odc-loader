@@ -53,9 +53,6 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 explicit_package_bases = true
 
-[tool.isort]
-profile = "black"
-
 [tool.pylint.messages_control]
 max-line-length = 120
 max-args = 10
@@ -72,12 +69,16 @@ disable = [
 
 [dependency-groups]
 dev = [
-    "black>=25.1.0",
     "coverage>=7.6.7",
     "geopandas>=1.0.1",
-    "isort>=6.0.1",
     "mypy>=1.13.0",
     "pre-commit>=4.0.1",
     "pytest>=8.3.3",
+    "ruff",
     "ty",
+]
+
+[tool.ruff.lint]
+select = [
+    "I",  # Isort
 ]
