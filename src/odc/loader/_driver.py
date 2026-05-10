@@ -6,8 +6,9 @@ Currently always goes to rasterio
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from importlib import import_module
-from typing import Any, Callable
+from typing import Any
 
 from ._rio import RioDriver
 from ._zarr import XrMemReaderDriver

@@ -5,25 +5,11 @@ from __future__ import annotations
 
 import dataclasses
 import os
+from collections.abc import Hashable, Iterable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from types import SimpleNamespace
-from typing import (
-    Any,
-    Dict,
-    Hashable,
-    Iterable,
-    Iterator,
-    List,
-    Literal,
-    Mapping,
-    Optional,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    cast,
-)
+from typing import Any, Literal, Protocol, TypeAlias, cast
 
 import dask
 import numpy as np
@@ -94,7 +80,7 @@ class MkArray(Protocol):
     # pylint: disable=too-few-public-methods
     def __call__(
         self,
-        shape: Tuple[int, ...],
+        shape: tuple[int, ...],
         dtype: DTypeLike,
         /,
         name: Hashable,
@@ -111,16 +97,16 @@ class LoadChunkTask:
     # pylint: disable=too-many-instance-attributes
 
     band: str
-    srcs: List[List[int]]
+    srcs: list[list[int]]
     cfg: RasterLoadParams
     gbt: GeoboxTiles
-    idx: Tuple[int, ...]
-    shape: Tuple[int, ...]
+    idx: tuple[int, ...]
+    shape: tuple[int, ...]
     ydim: int = 1
     selection: ReaderSubsetSelection | None = None  # optional slice into extra dims
 
     @property
-    def idx_tyx(self) -> Tuple[int, int, int]:
+    def idx_tyx(self) -> tuple[int, int, int]:
         ydim = self.ydim
         return self.idx[0], self.idx[ydim], self.idx[ydim + 1]
 
@@ -133,7 +119,7 @@ class LoadChunkTask:
         return self.shape[self.ydim + 2 :]
 
     @property
-    def dst_roi(self) -> Tuple[slice, ...]:
+    def dst_roi(self) -> tuple[slice, ...]:
         t, y, x = self.idx_tyx
         iy, ix = self.gbt.roi[y, x]
         return (
@@ -154,11 +140,11 @@ class LoadChunkTask:
 
     def resolve_sources(
         self, srcs: Sequence[MultiBandSource]
-    ) -> List[List[tuple[int, RasterSource]]]:
-        out: List[List[tuple[int, RasterSource]]] = []
+    ) -> list[list[tuple[int, RasterSource]]]:
+        out: list[list[tuple[int, RasterSource]]] = []
 
         for layer in self.srcs:
-            _srcs: List[tuple[int, RasterSource]] = []
+            _srcs: list[tuple[int, RasterSource]] = []
             for idx in layer:
                 src = srcs[idx].get(self.band, None)
                 if src is not None and isinstance(src, RasterSource):
@@ -213,9 +199,9 @@ class DaskGraphBuilder:
         cfg: Mapping[str, RasterLoadParams],
         template: RasterGroupMetadata,
         srcs: Sequence[MultiBandSource],
-        tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+        tyx_bins: Mapping[tuple[int, int, int], list[int]],
         gbt: GeoboxTiles,
-        env: Dict[str, Any],
+        env: dict[str, Any],
         rdr: ReaderDriver,
         chunks: Mapping[str, int],
         mode: DaskBuilderMode | Literal["auto"] = "auto",
@@ -351,7 +337,7 @@ class DaskGraphBuilder:
 
     def __call__(
         self,
-        shape: Tuple[int, ...],
+        shape: tuple[int, ...],
         dtype: DTypeLike,
         /,
         name: Hashable,
@@ -375,7 +361,7 @@ class DaskGraphBuilder:
             f"{name}-{tk}",
         )
 
-        layers: Dict[str, Dict[Key, Any]] = {
+        layers: dict[str, dict[Key, Any]] = {
             cfg_layer: {
                 cfg_dsk: cfg,
                 gbt_dsk: self.gbt,
@@ -383,7 +369,7 @@ class DaskGraphBuilder:
             open_layer: {},
             band_layer: {},
         }
-        layer_deps: Dict[str, Any] = {
+        layer_deps: dict[str, Any] = {
             cfg_layer: set(),
             open_layer: set([cfg_layer]),
             band_layer: set([cfg_layer, open_layer]),
@@ -468,7 +454,7 @@ class DaskGraphBuilder:
 def _dask_open_reader(
     src: RasterSource,
     rdr: ReaderDriver,
-    env: Dict[str, Any],
+    env: dict[str, Any],
     load_state: GlobalLoadContext,
 ) -> RasterReader:
     with rdr.restore_env(env, load_state) as ctx:
@@ -478,12 +464,12 @@ def _dask_open_reader(
 def _dask_loader_tyx(
     srcs: Sequence[Sequence[RasterReader]],
     gbt: GeoboxTiles,
-    iyx: Tuple[int, int],
-    prefix_dims: Tuple[int, ...],
-    postfix_dims: Tuple[int, ...],
+    iyx: tuple[int, int],
+    prefix_dims: tuple[int, ...],
+    postfix_dims: tuple[int, ...],
     cfg: RasterLoadParams,
     rdr: ReaderDriver,
-    env: Dict[str, Any],
+    env: dict[str, Any],
     load_state: GlobalLoadContext,
     selection: Any | None = None,
 ) -> np.ndarray[tuple[int, ...]]:
@@ -595,7 +581,7 @@ def mk_dataset(
     gbox: GeoBox,
     time: Sequence[datetime],
     bands: Mapping[str, RasterLoadParams],
-    alloc: Optional[MkArray] = None,
+    alloc: MkArray | None = None,
     *,
     template: RasterGroupMetadata,
 ) -> xr.Dataset:
@@ -613,7 +599,7 @@ def mk_dataset(
         for coord in template.extra_coords
     }
 
-    def _alloc(shape: Tuple[int, ...], dtype: str, name: Hashable, ydim: int) -> Any:
+    def _alloc(shape: tuple[int, ...], dtype: str, name: Hashable, ydim: int) -> Any:
         if alloc is not None:
             return alloc(shape, dtype, name=name, ydim=ydim)
         return np.empty(shape, dtype=dtype)
@@ -628,13 +614,13 @@ def mk_dataset(
             prefix_dims = band.dims[:ydim]
             postfix_dims = band.dims[ydim + 2 :]
 
-            dims: Tuple[str, ...] = (
+            dims: tuple[str, ...] = (
                 "time",
                 *prefix_dims,
                 *gbox.dimensions,
                 *postfix_dims,
             )
-            shape: Tuple[int, ...] = (
+            shape: tuple[int, ...] = (
                 len(time),
                 *[_dims[dim] for dim in prefix_dims],
                 *gbox.shape.yx,
@@ -677,16 +663,16 @@ def chunked_load(
     load_cfg: Mapping[str, RasterLoadParams | AuxLoadParams],
     template: RasterGroupMetadata,
     srcs: Sequence[MultiBandSource],
-    tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+    tyx_bins: Mapping[tuple[int, int, int], list[int]],
     gbt: GeoboxTiles,
     tss: Sequence[datetime],
-    env: Dict[str, Any],
+    env: dict[str, Any],
     rdr: ReaderDriver,
     *,
     dtype: Band_DType | None = None,
     chunks: Mapping[str, int | Literal["auto"]] | None = None,
     pool: ThreadPoolExecutor | int | None = None,
-    progress: Optional[Any] = None,
+    progress: Any | None = None,
 ) -> xr.Dataset:
     """
     Route to either direct or dask chunked load.
@@ -723,10 +709,10 @@ def dask_chunked_load(
     load_cfg: Mapping[str, RasterLoadParams | AuxLoadParams],
     template: RasterGroupMetadata,
     srcs: Sequence[MultiBandSource],
-    tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+    tyx_bins: Mapping[tuple[int, int, int], list[int]],
     gbt: GeoboxTiles,
     tss: Sequence[datetime],
-    env: Dict[str, Any],
+    env: dict[str, Any],
     rdr: ReaderDriver,
     *,
     dtype: Band_DType | None = None,
@@ -786,10 +772,10 @@ def denorm_ydim(x: tuple[T, ...], ydim: int) -> tuple[T, ...]:
 
 def load_tasks(
     load_cfg: Mapping[str, RasterLoadParams],
-    tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+    tyx_bins: Mapping[tuple[int, int, int], list[int]],
     gbt: GeoboxTiles,
     *,
-    nt: Optional[int] = None,
+    nt: int | None = None,
     chunks: Mapping[str, int] | None = None,
     extra_dims: Mapping[str, int] | None = None,
     bands: Sequence[str] | None = None,
@@ -831,7 +817,7 @@ def load_tasks(
 
         for idx in np.ndindex(shape_in_chunks[:3]):
             tBi, yi, xi = idx
-            srcs: List[List[int]] = []
+            srcs: list[list[int]] = []
             t0, nt = _offsets[0][tBi], _chunks[0][tBi]
             for ti in range(t0, t0 + nt):
                 tyx_idx = (ti, yi, xi)
@@ -895,14 +881,14 @@ def direct_chunked_load(
     load_cfg: Mapping[str, RasterLoadParams | AuxLoadParams],
     template: RasterGroupMetadata,
     srcs: Sequence[MultiBandSource],
-    tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+    tyx_bins: Mapping[tuple[int, int, int], list[int]],
     gbt: GeoboxTiles,
     tss: Sequence[datetime],
-    env: Dict[str, Any],
+    env: dict[str, Any],
     rdr: ReaderDriver,
     *,
     pool: ThreadPoolExecutor | int | None = None,
-    progress: Optional[Any] = None,
+    progress: Any | None = None,
 ) -> xr.Dataset:
     """
     Load in chunks but without using Dask.
@@ -923,7 +909,7 @@ def direct_chunked_load(
     total_tasks = nt * nb * ny * nx
     load_state = rdr.new_load(gbox)
 
-    def _do_one(task: LoadChunkTask) -> Tuple[str, int, int, int]:
+    def _do_one(task: LoadChunkTask) -> tuple[str, int, int, int]:
         dst_slice = ds[task.band].data[task.dst_roi]
         layers = task.resolve_sources(srcs)
         ydim = len(task.prefix_dims)
@@ -1006,7 +992,7 @@ def resolve_chunks(
         extra_dims = {}
     tt = chunks.get("time", 1)
     ty, tx = (chunks.get(dim, -1) for dim in ["y", "x"])
-    chunks = (tt, ty, tx) + tuple((chunks.get(dim, -1) for dim in extra_dims))
+    chunks = (tt, ty, tx) + tuple(chunks.get(dim, -1) for dim in extra_dims)
     shape = base_shape + tuple(extra_dims.values())
     return normalize_chunks(chunks, shape, dtype=dtype, limit=limit)
 
@@ -1018,7 +1004,7 @@ def resolve_chunk_shape(
     dtype: Any | None = None,
     cfg: Mapping[str, RasterLoadParams | AuxLoadParams] | None = None,
     extra_dims: Mapping[str, int] | None = None,
-) -> Tuple[int, ...]:
+) -> tuple[int, ...]:
     """
     Compute chunk size for time, y and x dimensions and extra dims for raster
     bands only.
@@ -1058,7 +1044,7 @@ def _used_names(ds: xr.Dataset) -> set[str]:
 def _add_aux_bands(
     ds: xr.Dataset,
     aux_cfg: Mapping[str, AuxLoadParams],
-    tyx_bins: Mapping[Tuple[int, int, int], List[int]],
+    tyx_bins: Mapping[tuple[int, int, int], list[int]],
     srcs: Sequence[MultiBandSource],
     rdr: ReaderDriver,
     ctx: GlobalLoadContext,

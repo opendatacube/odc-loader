@@ -2,16 +2,8 @@
 Various Dask helpers.
 """
 
-from collections.abc import Generator, Iterable
-from typing import (
-    Any,
-    Callable,
-    Hashable,
-    MutableMapping,
-    Optional,
-    Tuple,
-    TypeVar,
-)
+from collections.abc import Callable, Generator, Hashable, Iterable, MutableMapping
+from typing import Any, TypeVar
 
 from dask.base import tokenize
 
@@ -20,9 +12,9 @@ T = TypeVar("T")
 
 def tokenize_stream(
     xx: Iterable[T],
-    key: Optional[Callable[[str], Hashable]] = None,
-    dsk: Optional[MutableMapping[Hashable, Any]] = None,
-) -> Generator[Tuple[Hashable, T]]:
+    key: Callable[[str], Hashable] | None = None,
+    dsk: MutableMapping[Hashable, Any] | None = None,
+) -> Generator[tuple[Hashable, T]]:
     if key:
         kx = ((key(tokenize(x)), x) for x in xx)
     else:

@@ -81,4 +81,5 @@ dev = [
 [tool.ruff.lint]
 select = [
     "I",  # Isort
+    "UP", # pyupgrade
 ]

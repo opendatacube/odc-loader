@@ -2,8 +2,9 @@
 Generic tools with only standard lib dependencies.
 """
 
+from collections.abc import Callable, Iterable, Iterator, Sized
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, Iterable, Iterator, Sized, TypeVar, Union
+from typing import TypeVar
 
 from typing_extensions import override
 
@@ -34,7 +35,7 @@ class SizedIterable(Sized, Iterable[T]):
 def pmap(
     func: Callable[[T], S],
     inputs: Iterable[T],
-    pool: Union[ThreadPoolExecutor, int, None],
+    pool: ThreadPoolExecutor | int | None,
 ) -> Iterator[S]:
     """
     Wrapper for ThreadPoolExecutor.map

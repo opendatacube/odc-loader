@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from typing import Any, Iterator, TypeAlias
+from typing import Any, TypeAlias
 
 import dask.array as da
 import fsspec
@@ -125,7 +125,7 @@ class Context:
         self.fs = fs
         self.gbt = gbt
 
-    def with_env(self, env: dict[str, Any]) -> "Context":
+    def with_env(self, env: dict[str, Any]) -> Context:
         assert isinstance(env, dict)
         return Context(self.geobox, self.chunks, fs=self.fs)
 
