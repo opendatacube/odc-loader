@@ -34,7 +34,7 @@ def _fetch_text(url: str, timeout: float = 0.1) -> Optional[str]:
             if 200 <= resp.getcode() < 300:
                 return resp.read().decode("utf8")
             return None
-    except IOError:
+    except OSError:
         return None
 
 

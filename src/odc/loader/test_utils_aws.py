@@ -85,7 +85,7 @@ def test_fetch_text() -> None:
         assert _fetch_text("http://localhost:8817") == "text"
 
     def fake_urlopen(*args, **kw):
-        raise IOError("Always broken")
+        raise OSError("Always broken")
 
     with patch_aws("urlopen", fake_urlopen):
         assert _fetch_text("http://localhost:8817") is None
