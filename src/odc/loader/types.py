@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
+from contextlib import AbstractContextManager
 from dataclasses import astuple, dataclass, field, replace
 from typing import (
     Any,
     Callable,
-    ContextManager,
     Dict,
     Mapping,
     Protocol,
@@ -739,7 +739,7 @@ class ReaderDriver(Protocol):
 
     def restore_env(
         self, env: dict[str, Any], load_state: GlobalLoadContext
-    ) -> ContextManager[LocalLoadContext]: ...
+    ) -> AbstractContextManager[LocalLoadContext]: ...
 
     def open(self, src: RasterSource, ctx: LocalLoadContext) -> RasterReader: ...
 
