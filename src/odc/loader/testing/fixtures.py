@@ -10,9 +10,10 @@ import pathlib
 import shutil
 import tempfile
 from collections import abc
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Generator, Iterator, Optional
+from typing import Any
 
 import numpy as np
 import rasterio
@@ -142,7 +143,7 @@ class LoadState:
         self.meta = meta
         self.finalised = False
 
-    def with_env(self, env: dict[str, Any]) -> "LoadState":
+    def with_env(self, env: dict[str, Any]) -> LoadState:
         assert isinstance(env, dict)
         return LoadState(self.geobox, self.meta)
 
@@ -164,8 +165,8 @@ class FakeReader:
         cfg: RasterLoadParams,
         dst_geobox: GeoBox,
         *,
-        dst: Optional[np.ndarray] = None,
-        selection: Optional[ReaderSubsetSelection] = None,
+        dst: np.ndarray | None = None,
+        selection: ReaderSubsetSelection | None = None,
     ) -> tuple[tuple[slice, slice], np.ndarray]:
         meta = self._src.meta
         assert meta is not None

@@ -9,7 +9,7 @@ Helper methods for working with AWS
 import json
 import os
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 from urllib.request import urlopen
 
 import botocore
@@ -28,17 +28,17 @@ __all__ = (
 )
 
 
-def _fetch_text(url: str, timeout: float = 0.1) -> Optional[str]:
+def _fetch_text(url: str, timeout: float = 0.1) -> str | None:
     try:
         with urlopen(url, timeout=timeout) as resp:
             if 200 <= resp.getcode() < 300:
                 return resp.read().decode("utf8")
             return None
-    except IOError:
+    except OSError:
         return None
 
 
-def ec2_metadata(timeout: float = 0.1) -> Optional[Dict[str, Any]]:
+def ec2_metadata(timeout: float = 0.1) -> dict[str, Any] | None:
     """
     Grab EC2 instance metadata.
 
@@ -59,7 +59,7 @@ def ec2_metadata(timeout: float = 0.1) -> Optional[Dict[str, Any]]:
         return None
 
 
-def ec2_current_region() -> Optional[str]:
+def ec2_current_region() -> str | None:
     """Returns name of the region  this EC2 instance is running in."""
     cfg = ec2_metadata()
     if cfg is None:
@@ -67,16 +67,14 @@ def ec2_current_region() -> Optional[str]:
     return cfg.get("region", None)
 
 
-def botocore_default_region(session: Optional[Session] = None) -> Optional[str]:
+def botocore_default_region(session: Session | None = None) -> str | None:
     """Returns default region name as configured on the system."""
     if session is None:
         session = botocore.session.get_session()
     return session.get_config_variable("region")
 
 
-def auto_find_region(
-    session: Optional[Session] = None, default: Optional[str] = None
-) -> str:
+def auto_find_region(session: Session | None = None, default: str | None = None) -> str:
     """
     Try to figure out which region name to use
 
@@ -101,7 +99,7 @@ def auto_find_region(
 
 def get_creds_with_retry(
     session: Session, max_tries: int = 10, sleep: float = 0.1
-) -> Optional[Credentials]:
+) -> Credentials | None:
     """Attempt to obtain credentials upto `max_tries` times with back off
     :param session: botocore session, see mk_boto_session
     :param max_tries: number of attempt before failing and returing None
@@ -120,9 +118,9 @@ def get_creds_with_retry(
 
 
 def mk_boto_session(
-    profile: Optional[str] = None,
-    creds: Optional[ReadOnlyCredentials] = None,
-    region_name: Optional[str] = None,
+    profile: str | None = None,
+    creds: ReadOnlyCredentials | None = None,
+    region_name: str | None = None,
 ) -> Session:
     """Get botocore session with correct `region` configured
 
@@ -159,11 +157,11 @@ def aws_unsigned_check_env() -> bool:
 
 
 def get_aws_settings(
-    profile: Optional[str] = None,
+    profile: str | None = None,
     region_name: str = "auto",
-    aws_unsigned: Optional[bool] = None,
+    aws_unsigned: bool | None = None,
     requester_pays: bool = False,
-) -> Tuple[Dict[str, Any], Credentials | None]:
+) -> tuple[dict[str, Any], Credentials | None]:
     """
     Compute ``aws=`` parameter for ``set_default_rio_config``.
 

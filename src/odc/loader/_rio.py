@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import rasterio
@@ -103,7 +104,7 @@ class GlobalContext:
     Shared across all Readers for single ``.load``.
     """
 
-    def __init__(self, geobox: GeoBox, chunks: Dict[str, int] | None = None) -> None:
+    def __init__(self, geobox: GeoBox, chunks: dict[str, int] | None = None) -> None:
         self.geobox = geobox
         self.chunks = chunks
         self._local_ctx: Any | None = None
@@ -139,8 +140,8 @@ class RioReader:
         cfg: RasterLoadParams,
         dst_geobox: GeoBox,
         *,
-        dst: Optional[np.ndarray] = None,
-        selection: Optional[ReaderSubsetSelection] = None,
+        dst: np.ndarray | None = None,
+        selection: ReaderSubsetSelection | None = None,
     ) -> tuple[tuple[slice, slice], np.ndarray]:
         return rio_read(self._src, cfg, dst_geobox, dst=dst, selection=selection)
 
@@ -166,19 +167,19 @@ class RioDriver:
         self,
         geobox: GeoBox,
         *,
-        chunks: None | Dict[str, int] = None,
+        chunks: None | dict[str, int] = None,
     ) -> GlobalContext:
         return GlobalContext(geobox, chunks=chunks)
 
     def finalise_load(self, load_state: GlobalContext) -> Any:
         return load_state.finalise()
 
-    def capture_env(self) -> Dict[str, Any]:
+    def capture_env(self) -> dict[str, Any]:
         return capture_rio_env()
 
     @contextmanager
     def restore_env(
-        self, env: Dict[str, Any], load_state: GlobalContext
+        self, env: dict[str, Any], load_state: GlobalContext
     ) -> Iterator[LocalContext]:
         with rio_env(**env):
             yield load_state.local_ctx(LocalContext)
@@ -206,14 +207,14 @@ class RioDriver:
 class _GlobalRioConfig:
     def __init__(self) -> None:
         self._configured = False
-        self._aws: Optional[Dict[str, Any]] = None
-        self._gdal_opts: Dict[str, Any] = {}
+        self._aws: dict[str, Any] | None = None
+        self._gdal_opts: dict[str, Any] = {}
 
     def set(
         self,
         *,
-        aws: Optional[Dict[str, Any]],
-        gdal_opts: Dict[str, Any],
+        aws: dict[str, Any] | None,
+        gdal_opts: dict[str, Any],
     ) -> None:
         self._aws = {**aws} if aws is not None else None
         self._gdal_opts = {**gdal_opts}
@@ -227,7 +228,7 @@ class _GlobalRioConfig:
         if self._configured is False:
             return rasterio.env.Env(_local.session())
 
-        session: Optional[Session] = None
+        session: Session | None = None
         if self._aws is not None:
             session = AWSSession(**self._aws)
         return rasterio.env.Env(_local.session(session), **self._gdal_opts)
@@ -243,8 +244,8 @@ class ThreadSession(threading.local):
 
     def __init__(self) -> None:
         super().__init__()
-        self._session: Optional[Session] = None
-        self._aws: Optional[Dict[str, Any]] = None
+        self._session: Session | None = None
+        self._aws: dict[str, Any] | None = None
 
     @property
     def configured(self) -> bool:
@@ -256,7 +257,7 @@ class ThreadSession(threading.local):
         if rasterio.env.hasenv():
             rasterio.env.delenv()
 
-    def session(self, session: Union[Dict[str, Any], Session, None] = None) -> Session:
+    def session(self, session: dict[str, Any] | Session | None = None) -> Session:
         if self._session is None:
             # first call in this thread
             # 1. Start GDAL environment
@@ -295,7 +296,7 @@ def _sanitize(
     return {k: (v if k not in keys else "xx..xx") for k, v in opts.items()}
 
 
-def get_rio_env(sanitize: bool = True, no_session_keys: bool = False) -> Dict[str, Any]:
+def get_rio_env(sanitize: bool = True, no_session_keys: bool = False) -> dict[str, Any]:
     """
     Get GDAL params configured by rasterio for the current thread.
 
@@ -327,7 +328,7 @@ def rio_env(session=None, **kw) -> Env:
 
 
 def _set_default_rio_config(
-    aws: Optional[Dict[str, Any]] = None,
+    aws: dict[str, Any] | None = None,
     cloud_defaults: bool = False,
     **kwargs,
 ) -> None:
@@ -339,7 +340,7 @@ def configure_rio(
     *,
     cloud_defaults: bool = False,
     verbose: bool = False,
-    aws: Optional[Dict[str, Any]] = None,
+    aws: dict[str, Any] | None = None,
     **params,
 ) -> None:
     """
@@ -375,9 +376,9 @@ def _dump_rio_config() -> None:
 
 
 def configure_s3_access(
-    profile: Optional[str] = None,
+    profile: str | None = None,
     region_name: str = "auto",
-    aws_unsigned: Optional[bool] = None,
+    aws_unsigned: bool | None = None,
     requester_pays: bool = False,
     cloud_defaults: bool = True,
     **gdal_opts,
@@ -439,7 +440,7 @@ def _do_read(
     cfg: RasterLoadParams,
     dst_geobox: GeoBox,
     rr: ReprojectInfo,
-    dst: Optional[np.ndarray] = None,
+    dst: np.ndarray | None = None,
 ) -> tuple[tuple[slice, slice], np.ndarray]:
     resampling = resampling_s2rio(cfg.resampling)
     rdr = src.ds
@@ -502,8 +503,8 @@ def rio_read(
     src: RasterSource,
     cfg: RasterLoadParams,
     dst_geobox: GeoBox,
-    dst: Optional[np.ndarray] = None,
-    selection: Optional[ReaderSubsetSelection] = None,
+    dst: np.ndarray | None = None,
+    selection: ReaderSubsetSelection | None = None,
 ) -> tuple[tuple[slice, slice], np.ndarray]:
     """
     Internal read method.
@@ -528,7 +529,7 @@ def rio_read(
     """
     ydim = src.ydim
 
-    def prep_dst(dst: Optional[np.ndarray]) -> Optional[np.ndarray]:
+    def prep_dst(dst: np.ndarray | None) -> np.ndarray | None:
         if dst is None:
             return None
         if dst.ndim == 2 or ydim == 1:
@@ -598,8 +599,8 @@ def _rio_read(
     src: RasterSource,
     cfg: RasterLoadParams,
     dst_geobox: GeoBox,
-    dst: Optional[np.ndarray] = None,
-    selection: Optional[ReaderSubsetSelection] = None,
+    dst: np.ndarray | None = None,
+    selection: ReaderSubsetSelection | None = None,
 ) -> tuple[tuple[slice, slice], np.ndarray]:
     # if resampling is `nearest` then ignore sub-pixel translation when deciding
     # whether we can just paste source into destination
@@ -607,7 +608,7 @@ def _rio_read(
 
     with rasterio.open(src.uri, "r", sharing=False) as rdr:
         assert isinstance(rdr, rasterio.DatasetReader)
-        ovr_idx: Optional[int] = None
+        ovr_idx: int | None = None
 
         bidx = resolve_band_query(src, rdr.count, selection=selection)
         rr = _reproject_info_from_rio(rdr, dst_geobox, ttol=ttol)
@@ -631,7 +632,7 @@ def _rio_read(
                 )
 
 
-def capture_rio_env() -> Dict[str, Any]:
+def capture_rio_env() -> dict[str, Any]:
     # pylint: disable=protected-access
     if _CFG._configured:
         env = {**_CFG._gdal_opts, "_aws": _CFG._aws}

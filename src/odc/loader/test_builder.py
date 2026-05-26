@@ -2,9 +2,10 @@
 # pylint: disable=redefined-outer-name,unused-argument
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from types import SimpleNamespace as _sn
-from typing import Any, Dict, Literal, Mapping, Sequence
+from typing import Any, Literal
 
 import dask
 import dask.array as da
@@ -42,7 +43,7 @@ _rlp = RasterLoadParams
 
 def _full_tyx_bins(
     tiles: GeoboxTiles, nsrcs=1, nt=1
-) -> Dict[tuple[int, int, int], list[int]]:
+) -> dict[tuple[int, int, int], list[int]]:
     return {idx: list(range(nsrcs)) for idx in np.ndindex((nt, *tiles.shape.yx))}
 
 
@@ -99,7 +100,7 @@ rlp_fixtures = [
 
 def check_xx(
     xx: Dataset,
-    bands: Dict[str, RasterLoadParams],
+    bands: dict[str, RasterLoadParams],
     extra_coords: Sequence[FixedCoord] | None,
     extra_dims: Mapping[str, int] | None,
     expect: Mapping[str, _sn],
@@ -132,7 +133,7 @@ def check_xx(
 
 @pytest.mark.parametrize("bands,extra_coords,extra_dims,expect", rlp_fixtures)
 def test_mk_dataset(
-    bands: Dict[str, RasterLoadParams],
+    bands: dict[str, RasterLoadParams],
     extra_coords: Sequence[FixedCoord] | None,
     extra_dims: Mapping[str, int] | None,
     expect: Mapping[str, _sn],
@@ -159,7 +160,7 @@ def test_mk_dataset(
 @pytest.mark.parametrize("chunk_extra_dims", [False, True])
 @pytest.mark.parametrize("mode", ["auto", "concurrency"])
 def test_dask_builder(
-    bands: Dict[str, RasterLoadParams],
+    bands: dict[str, RasterLoadParams],
     extra_coords: Sequence[FixedCoord] | None,
     extra_dims: Mapping[str, int] | None,
     expect: Mapping[str, _sn],

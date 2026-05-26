@@ -3,19 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable, Mapping, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import astuple, dataclass, field, replace
-from typing import (
-    Any,
-    Callable,
-    ContextManager,
-    Dict,
-    Mapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeVar,
-)
+from typing import Any, Protocol, TypeAlias, TypeVar
 
 import numpy as np
 import xarray as xr
@@ -25,7 +16,7 @@ from odc.geo.geobox import GeoBox, GeoBoxBase
 
 T = TypeVar("T")
 
-BandKey: TypeAlias = Tuple[str, int]
+BandKey: TypeAlias = tuple[str, int]
 """Asset Name, band index within an asset (1 based, 0 indicates "all the bands")."""
 
 BandIdentifier: TypeAlias = str | BandKey
@@ -67,7 +58,7 @@ class RasterBandMetadata:
     units: str = "1"
     """Units of the pixel data."""
 
-    dims: Tuple[str, ...] = ()
+    dims: tuple[str, ...] = ()
     """Dimension names for this band.
 
     e.g. ("y", "x", "wavelength")
@@ -79,7 +70,7 @@ class RasterBandMetadata:
     attrs: dict[str, Any] = field(default_factory=dict)
     """Additional raster band attributes."""
 
-    def with_defaults(self, defaults: "RasterBandMetadata") -> "RasterBandMetadata":
+    def with_defaults(self, defaults: RasterBandMetadata) -> RasterBandMetadata:
         """
         Merge with another metadata object, using self as the primary source.
 
@@ -94,7 +85,7 @@ class RasterBandMetadata:
             attrs=with_default(self.attrs, defaults.attrs),
         )
 
-    def patch(self, **kwargs) -> "RasterBandMetadata":
+    def patch(self, **kwargs) -> RasterBandMetadata:
         """
         Return a new object with updated fields.
         """
@@ -103,7 +94,7 @@ class RasterBandMetadata:
     def __dask_tokenize__(self):
         return astuple(self)
 
-    def _repr_json_(self) -> Dict[str, Any]:
+    def _repr_json_(self) -> dict[str, Any]:
         """
         Return a JSON serializable representation of the RasterBandMetadata object.
         """
@@ -168,7 +159,7 @@ class AuxBandMetadata:
     units: str = "1"
     """Units of the data."""
 
-    dims: Tuple[str, ...] = ()
+    dims: tuple[str, ...] = ()
     """Dimension names for this auxilliary band.
 
     e.g. ("time",) or ("index",) or ()
@@ -180,7 +171,7 @@ class AuxBandMetadata:
     attrs: dict[str, Any] = field(default_factory=dict)
     """Additional auxilliary band attributes."""
 
-    def _repr_json_(self) -> Dict[str, Any]:
+    def _repr_json_(self) -> dict[str, Any]:
         """
         Return a JSON serializable representation of the AuxBandMetadata object.
         """
@@ -231,7 +222,7 @@ class FixedCoord:
         if not self.dim:
             self.dim = self.name
 
-    def _repr_json_(self) -> Dict[str, Any]:
+    def _repr_json_(self) -> dict[str, Any]:
         """
         Return a JSON serializable representation of the FixedCoord object.
         """
@@ -279,13 +270,13 @@ class RasterGroupMetadata:
     Must be same values across items/datasets.
     """
 
-    def patch(self, **kwargs) -> "RasterGroupMetadata":
+    def patch(self, **kwargs) -> RasterGroupMetadata:
         """
         Return a new object with updated fields.
         """
         return replace(self, **kwargs)
 
-    def merge(self, other: "RasterGroupMetadata") -> "RasterGroupMetadata":
+    def merge(self, other: RasterGroupMetadata) -> RasterGroupMetadata:
         """
         Merge with another metadata object, using self as the primary source.
         """
@@ -299,7 +290,7 @@ class RasterGroupMetadata:
 
         return RasterGroupMetadata(bands, aliases, extra_dims, tuple(extra_coords))
 
-    def _repr_json_(self) -> Dict[str, Any]:
+    def _repr_json_(self) -> dict[str, Any]:
         """
         Return a JSON serializable representation of the RasterGroupMetadata object.
         """
@@ -367,13 +358,13 @@ class RasterSource:
     driver_data: Any = None
     """IO Driver specific extra data."""
 
-    def patch(self, **kwargs) -> "RasterSource":
+    def patch(self, **kwargs) -> RasterSource:
         """
         Return a new object with updated fields.
         """
         return replace(self, **kwargs)
 
-    def strip(self) -> "RasterSource":
+    def strip(self) -> RasterSource:
         """
         Copy with minimal data only.
 
@@ -398,7 +389,7 @@ class RasterSource:
     def __dask_tokenize__(self) -> tuple[str, int, str | None]:
         return (self.uri, self.band, self.subdataset)
 
-    def _repr_json_(self) -> Dict[str, Any]:
+    def _repr_json_(self) -> dict[str, Any]:
         """
         Return a JSON serializable representation of the RasterSource object.
         """
@@ -448,13 +439,13 @@ class AuxDataSource:
     driver_data: Any = None
     """IO Driver specific extra data."""
 
-    def patch(self, **kwargs) -> "AuxDataSource":
+    def patch(self, **kwargs) -> AuxDataSource:
         """
         Return a new object with updated fields.
         """
         return replace(self, **kwargs)
 
-    def strip(self) -> "AuxDataSource":
+    def strip(self) -> AuxDataSource:
         """
         Compatibility with RasterSource.strip()
         """
@@ -509,7 +500,7 @@ class RasterLoadParams:
     fail_on_error: bool = True
     """Quit on the first error or continue."""
 
-    dims: Tuple[str, ...] = ()
+    dims: tuple[str, ...] = ()
     """Dimension names for this band."""
 
     meta: RasterBandMetadata | None = None
@@ -518,7 +509,7 @@ class RasterLoadParams:
     fuser_fqn: str | None = None
     """Fully qualified name of custom fuser function to use for this band."""
 
-    def patch(self, **kwargs) -> "RasterLoadParams":
+    def patch(self, **kwargs) -> RasterLoadParams:
         """
         Return a new object with updated fields.
         """
@@ -537,7 +528,7 @@ class RasterLoadParams:
         return _extra_dims(self.dims)
 
     @staticmethod
-    def same_as(src: RasterBandMetadata | RasterSource) -> "RasterLoadParams":
+    def same_as(src: RasterBandMetadata | RasterSource) -> RasterLoadParams:
         """Construct from source object."""
         if isinstance(src, RasterBandMetadata):
             meta = src
@@ -560,7 +551,7 @@ class RasterLoadParams:
     def __dask_tokenize__(self):
         return astuple(self)
 
-    def _repr_json_(self) -> Dict[str, Any]:
+    def _repr_json_(self) -> dict[str, Any]:
         """
         Return a JSON serializable representation of the RasterLoadParams object.
         """
@@ -594,14 +585,14 @@ class AuxLoadParams:
     meta: AuxBandMetadata | None = None
     """Expected auxiliary band metadata."""
 
-    def patch(self, **kwargs) -> "AuxLoadParams":
+    def patch(self, **kwargs) -> AuxLoadParams:
         """
         Return a new object with updated fields.
         """
         return replace(self, **kwargs)
 
     @staticmethod
-    def same_as(src: AuxBandMetadata | AuxDataSource) -> "AuxLoadParams":
+    def same_as(src: AuxBandMetadata | AuxDataSource) -> AuxLoadParams:
         """Construct from source object."""
         if isinstance(src, AuxBandMetadata):
             meta = src
@@ -617,7 +608,7 @@ class AuxLoadParams:
     def __dask_tokenize__(self):
         return astuple(self)
 
-    def _repr_json_(self) -> Dict[str, Any]:
+    def _repr_json_(self) -> dict[str, Any]:
         """
         Return a JSON serializable representation of the AuxLoadParams object.
         """
@@ -689,7 +680,7 @@ class DaskRasterReader(Protocol):
         *,
         layer_name: str,
         idx: int,
-    ) -> "DaskRasterReader": ...
+    ) -> DaskRasterReader: ...
 
 
 class AuxReader(Protocol):
@@ -730,7 +721,7 @@ class ReaderDriver(Protocol):
         self,
         geobox: GeoBox,
         *,
-        chunks: None | Dict[str, int] = None,
+        chunks: None | dict[str, int] = None,
     ) -> GlobalLoadContext: ...
 
     def finalise_load(self, load_state: GlobalLoadContext) -> Any: ...
@@ -739,7 +730,7 @@ class ReaderDriver(Protocol):
 
     def restore_env(
         self, env: dict[str, Any], load_state: GlobalLoadContext
-    ) -> ContextManager[LocalLoadContext]: ...
+    ) -> AbstractContextManager[LocalLoadContext]: ...
 
     def open(self, src: RasterSource, ctx: LocalLoadContext) -> RasterReader: ...
 
@@ -828,7 +819,7 @@ def norm_key(k: BandIdentifier) -> BandKey:
     return k
 
 
-def _ydim(dims: Tuple[str, ...]) -> int:
+def _ydim(dims: tuple[str, ...]) -> int:
     if dims:
         return dims.index("y")
     return 0

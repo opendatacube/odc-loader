@@ -8,7 +8,8 @@ Utilities for reading pixels from raster files.
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import numpy as np
 from dask import delayed
@@ -35,7 +36,7 @@ def _dask_read_adaptor(
     dst_geobox: GeoBox,
     driver: ReaderDriver,
     env: dict[str, Any],
-    selection: Optional[ReaderSubsetSelection] = None,
+    selection: ReaderSubsetSelection | None = None,
 ) -> tuple[tuple[slice, slice], np.ndarray]:
 
     with driver.restore_env(env, ctx) as local_ctx:
@@ -75,7 +76,7 @@ class ReaderDaskAdaptor:
         self,
         dst_geobox: GeoBox,
         *,
-        selection: Optional[ReaderSubsetSelection] = None,
+        selection: ReaderSubsetSelection | None = None,
         idx: tuple[int, ...],
     ) -> Any:
         assert self._src is not None
@@ -103,7 +104,7 @@ class ReaderDaskAdaptor:
         ctx: GlobalLoadContext,
         layer_name: str,
         idx: int,
-    ) -> "ReaderDaskAdaptor":
+    ) -> ReaderDaskAdaptor:
         return ReaderDaskAdaptor(
             self._driver,
             self._env,
@@ -183,9 +184,7 @@ def resolve_load_cfg(
     return {name: _resolve(name, meta) for name, meta in bands.items()}
 
 
-def resolve_src_nodata(
-    nodata: Optional[float], cfg: RasterLoadParams
-) -> Optional[float]:
+def resolve_src_nodata(nodata: float | None, cfg: RasterLoadParams) -> float | None:
     if cfg.src_nodata_override is not None:
         return cfg.src_nodata_override
     if nodata is not None:
@@ -202,8 +201,8 @@ def resolve_dst_dtype(src_dtype: str, cfg: RasterLoadParams) -> np.dtype:
 def resolve_dst_nodata(
     dst_dtype: np.dtype,
     cfg: RasterLoadParams,
-    src_nodata: Optional[float] = None,
-) -> Optional[float]:
+    src_nodata: float | None = None,
+) -> float | None:
     # 1. Configuration
     # 2. np.nan for float32 outputs
     # 3. Fall back to source nodata
@@ -222,7 +221,7 @@ def resolve_dst_nodata(
 def resolve_dst_fill_value(
     dst_dtype: np.dtype,
     cfg: RasterLoadParams,
-    src_nodata: Optional[float] = None,
+    src_nodata: float | None = None,
 ) -> float:
     nodata = resolve_dst_nodata(dst_dtype, cfg, src_nodata)
     if nodata is None:
@@ -281,7 +280,7 @@ def expand_selection(selection: Any, ydim: int) -> tuple[slice, ...]:
     return prefix + (slice(None), slice(None)) + postfix
 
 
-def pick_overview(read_shrink: int, overviews: Sequence[int]) -> Optional[int]:
+def pick_overview(read_shrink: int, overviews: Sequence[int]) -> int | None:
     if len(overviews) == 0 or read_shrink < overviews[0]:
         return None
 
@@ -294,7 +293,7 @@ def pick_overview(read_shrink: int, overviews: Sequence[int]) -> Optional[int]:
     return _idx
 
 
-def same_nodata(a: Optional[float], b: Optional[float]) -> bool:
+def same_nodata(a: float | None, b: float | None) -> bool:
     if a is None:
         return b is None
     if b is None:
@@ -304,7 +303,7 @@ def same_nodata(a: Optional[float], b: Optional[float]) -> bool:
     return a == b
 
 
-def nodata_mask(pix: np.ndarray, nodata: Optional[float]) -> np.ndarray:
+def nodata_mask(pix: np.ndarray, nodata: float | None) -> np.ndarray:
     if pix.dtype.kind == "f":
         if nodata is None or math.isnan(nodata):
             return np.isnan(pix)
