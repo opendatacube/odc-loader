@@ -556,34 +556,35 @@ def rio_read(
         # B,Y,X -> Y,X,B
         return roi, out.transpose([1, 2, 0])
 
+    error_msg = ""
     try:
         return fixup_out(
             _rio_read(src, cfg, dst_geobox, prep_dst(dst), selection=selection)
         )
     except (
+        rasterio.errors.RasterioError,
         rasterio.errors.RasterioIOError,
         rasterio.errors.RasterBlockError,
         rasterio.errors.WarpOperationError,
         rasterio.errors.WindowEvaluationError,
     ) as e:
+        error_msg = str(e)
         if cfg.fail_on_error:
             log.error(
-                "Aborting load due to failure while reading: %s:%d",
+                "Failed to load %s:%d due to rasterio error: '%s'",
                 src.uri,
                 src.band,
-            )
-            raise e
-    except rasterio.errors.RasterioError as e:
-        if cfg.fail_on_error:
-            log.error(
-                "Aborting load due to some rasterio error: %s:%d",
-                src.uri,
-                src.band,
+                error_msg,
             )
             raise e
 
     # Failed to read, but asked to continue
-    log.warning("Ignoring read failure while reading: %s:%d", src.uri, src.band)
+    log.warning(
+        "Ignoring read failure reading %s:%d (reason: '%s')",
+        src.uri,
+        src.band,
+        error_msg,
+    )
 
     # TODO: capture errors somehow
 
