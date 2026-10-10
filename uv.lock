@@ -1180,7 +1180,7 @@ wheels = [
 
 [[package]]
 name = "odc-loader"
-version = "0.6.4"
+version = "0.6.5"
 source = { editable = "." }
 dependencies = [
     { name = "dask", extra = ["array"] },
