@@ -26,6 +26,7 @@ from odc.geo.roi import roi_is_empty, roi_shape, w_
 from odc.geo.warp import resampling_s2rio
 from rasterio.env import Env
 from rasterio.session import AWSSession, Session
+from typing_extensions import override
 
 from ._reader import (
     nodata_mask,
@@ -109,6 +110,7 @@ class GlobalContext:
         self.chunks = chunks
         self._local_ctx: Any | None = None
 
+    @override
     def __getstate__(self) -> dict[str, Any]:
         return {"geobox": self.geobox, "chunks": self.chunks}
 

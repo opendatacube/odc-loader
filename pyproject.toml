@@ -44,7 +44,7 @@ build-backend = "flit_core.buildapi"
 name = "odc.loader"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 ignore_missing_imports = true
 allow_redefinition = true
 enable_error_code = ["explicit-override"]
