@@ -89,3 +89,5 @@ docs/notebooks/
 .htmlcov/
 .ruff_cache
 .jj
+
+uv.lock

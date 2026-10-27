@@ -22,11 +22,11 @@ runs:
       uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       with:
         version: ${{ inputs.uv-version }}
-        enable-cache: "true"
+        enable-cache: "false"
         cache-suffix: ${{ inputs.python-version }}
 
     - name: Install Python dependencies
       # --frozen: Sync without updating the uv.lock file
       # --locked: Assert that the lockfile will remain unchanged
-      run: uv sync --frozen --all-extras --python ${{ inputs.python-version }}
+      run: uv sync --all-extras --python ${{ inputs.python-version }}
       shell: bash
