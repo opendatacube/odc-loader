@@ -86,11 +86,13 @@ def test_mem_reader(sample_ds: xr.Dataset) -> None:
 
     ds = sample_ds.copy()
     xx = ds.xx
-    yy = xx.astype("uint8", keep_attrs=False).rename("yy")
+    yy = xx.astype("uint8").rename("yy")
+    yy.attrs.clear()
     yy = yy.expand_dims("band", 2)
     yy = xr.concat([yy, yy + 1, yy + 2], "band").assign_coords(band=["r", "g", "b"])
     yy.band.attrs["units"] = "CC"
 
+    assert yy.odc.crs is not None
     assert yy.odc.geobox == gbox
 
     ds["yy"] = yy
