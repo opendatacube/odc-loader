@@ -233,7 +233,7 @@ def test_memreader_zarr(sample_ds: xr.Dataset) -> None:
 
     md_store: dict[str, bytes] = {}
     chunk_store: dict[str, bytes] = {}
-    sample_ds.to_zarr(md_store, chunk_store, compute=False, consolidated=True)
+    sample_ds.to_zarr(md_store, chunk_store, compute=False, consolidated=True)  # type: ignore
 
     assert ".zmetadata" in md_store
     zmd = json.loads(md_store[".zmetadata"])["metadata"]
